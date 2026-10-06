@@ -3,6 +3,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma, getSettings, type Settings } from "@/lib/db";
 import { normalizePhone } from "@/lib/format";
 import { consume, isLimited } from "@/lib/rate-limit";
+import { hoursFor, parseWeeklyHours } from "@/lib/schedule";
 import {
   addDaysToKey,
   formatTime,
@@ -81,18 +82,14 @@ function unitsFor(durationMin: number, settings: Settings) {
   return Math.max(1, Math.ceil(durationMin / settings.slotDurationMin));
 }
 
-export function openDays(settings: Settings) {
-  return new Set(settings.daysOpen.split(",").map((d) => Number(d.trim())));
-}
-
 /** Días que se pueden reservar, desde hoy hasta el límite configurado. */
 export function bookableDates(settings: Settings) {
-  const open = openDays(settings);
+  const hours = parseWeeklyHours(settings.weeklyHours);
   const today = todayKey();
   const dates: string[] = [];
   for (let i = 0; i <= settings.bookingWindowDays; i++) {
     const key = addDaysToKey(today, i);
-    if (open.has(weekdayOf(key))) dates.push(key);
+    if (hours[weekdayOf(key)]) dates.push(key);
   }
   return dates;
 }
@@ -107,13 +104,14 @@ export async function getAvailability(dateKey: string, serviceId: number) {
     prisma.service.findFirst({ where: { id: serviceId, active: true } }),
   ]);
   if (!service) throw new BookingError(404, "Servicio no encontrado");
-  if (!bookableDates(settings).includes(dateKey)) return { dateKey, open: false, slots: [] };
+  const hours = hoursFor(settings.weeklyHours, dateKey);
+  if (!hours || !bookableDates(settings).includes(dateKey)) return { dateKey, open: false, slots: [] };
 
   await releaseExpired();
 
   const durationMs = unitsFor(service.durationMin, settings) * settings.slotDurationMin * MINUTE;
-  const open = zonedInstant(dateKey, settings.openingTime);
-  const close = zonedInstant(dateKey, settings.closingTime);
+  const open = zonedInstant(dateKey, hours.open);
+  const close = zonedInstant(dateKey, hours.close);
   const earliest = Date.now() + settings.minNoticeMin * MINUTE;
 
   const locks = await prisma.slotLock.findMany({
@@ -334,17 +332,20 @@ export async function adminCancel(id: string) {
 export async function createBlock(dateKey: string, from: string, to: string, reason?: string) {
   if (!isDateKey(dateKey) || !isTimeKey(from) || !isTimeKey(to)) throw new BookingError(400, "Datos inválidos");
   const settings = await getSettings();
+  const hours = hoursFor(settings.weeklyHours, dateKey);
+  if (!hours) throw new BookingError(400, "Ese día el local está cerrado");
   const unit = settings.slotDurationMin;
-  if (minutesOf(from) % unit !== minutesOf(settings.openingTime) % unit || minutesOf(to) % unit !== minutesOf(settings.openingTime) % unit) {
+  const phase = minutesOf(hours.open) % unit;
+  if (minutesOf(from) % unit !== phase || minutesOf(to) % unit !== phase) {
     throw new BookingError(400, `Los horarios tienen que coincidir con la grilla de ${unit} minutos`);
   }
   const startsAt = zonedInstant(dateKey, from);
   const endsAt = zonedInstant(dateKey, to);
   if (endsAt <= startsAt) throw new BookingError(400, "La hora de fin tiene que ser posterior a la de inicio");
-  if (minutesOf(from) < minutesOf(settings.openingTime) || minutesOf(to) > minutesOf(settings.closingTime)) {
+  if (minutesOf(from) < minutesOf(hours.open) || minutesOf(to) > minutesOf(hours.close)) {
     throw new BookingError(
       400,
-      `El bloqueo tiene que estar dentro del horario de atención (${settings.openingTime} a ${settings.closingTime})`,
+      `El bloqueo tiene que estar dentro del horario de atención (${hours.open} a ${hours.close})`,
     );
   }
 

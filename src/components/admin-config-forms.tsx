@@ -2,20 +2,12 @@
 
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Pencil, Plus } from "lucide-react";
+import { CopyCheck, Loader2, Pencil, Plus } from "lucide-react";
 import { ActionButton, request } from "@/components/admin-controls";
 import { formatPrice } from "@/lib/format";
+import { parseWeeklyHours, WEEK } from "@/lib/schedule";
 
-// Lunes primero; el valor es el de la base (0 = domingo ... 6 = sábado).
-const WEEK = [
-  { value: 1, label: "Lunes" },
-  { value: 2, label: "Martes" },
-  { value: 3, label: "Miércoles" },
-  { value: 4, label: "Jueves" },
-  { value: 5, label: "Viernes" },
-  { value: 6, label: "Sábado" },
-  { value: 0, label: "Domingo" },
-];
+type DayRow = { open: boolean; from: string; to: string };
 
 function FormMessage({ error, ok }: { error: string | null; ok?: string | null }) {
   if (error) {
@@ -39,9 +31,7 @@ export type SettingsValues = {
   salonName: string;
   salonAddress: string;
   salonPhone: string;
-  openingTime: string;
-  closingTime: string;
-  daysOpen: string;
+  weeklyHours: string;
   slotDurationMin: number;
   bookingWindowDays: number;
   minNoticeMin: number;
@@ -53,15 +43,20 @@ export function SettingsForm({ settings }: { settings: SettingsValues }) {
     salonName: settings.salonName,
     salonAddress: settings.salonAddress,
     salonPhone: settings.salonPhone,
-    openingTime: settings.openingTime,
-    closingTime: settings.closingTime,
     slotDurationMin: String(settings.slotDurationMin),
     bookingWindowDays: String(settings.bookingWindowDays),
     minNoticeMin: String(settings.minNoticeMin),
   });
-  const [days, setDays] = useState(
-    () => new Set(settings.daysOpen.split(",").filter(Boolean).map((d) => Number(d.trim()))),
-  );
+  const [days, setDays] = useState<Record<number, DayRow>>(() => {
+    const hours = parseWeeklyHours(settings.weeklyHours);
+    const first = Object.values(hours)[0] ?? { open: "09:00", close: "20:00" };
+    return Object.fromEntries(
+      WEEK.map((d) => {
+        const h = hours[d.value];
+        return [d.value, { open: !!h, from: h?.open ?? first.open, to: h?.close ?? first.close }];
+      }),
+    );
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -69,12 +64,17 @@ export function SettingsForm({ settings }: { settings: SettingsValues }) {
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  function toggleDay(value: number) {
+  function updateDay(value: number, patch: Partial<DayRow>) {
+    setDays((prev) => ({ ...prev, [value]: { ...prev[value], ...patch } }));
+  }
+
+  /** Copia el horario de un día a todos los demás días abiertos. */
+  function copyToOpenDays(value: number) {
     setDays((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) next.delete(value);
-      else next.add(value);
-      return next;
+      const { from, to } = prev[value];
+      return Object.fromEntries(
+        Object.entries(prev).map(([k, d]) => [k, d.open ? { ...d, from, to } : d]),
+      ) as Record<number, DayRow>;
     });
   }
 
@@ -85,7 +85,11 @@ export function SettingsForm({ settings }: { settings: SettingsValues }) {
     setOk(null);
     const err = await request("/api/admin/settings", "PUT", {
       ...form,
-      daysOpen: [...days],
+      weeklyHours: WEEK.filter((d) => days[d.value].open).map((d) => ({
+        weekday: d.value,
+        open: days[d.value].from,
+        close: days[d.value].to,
+      })),
       slotDurationMin: Number(form.slotDurationMin),
       bookingWindowDays: Number(form.bookingWindowDays),
       minNoticeMin: Number(form.minNoticeMin),
@@ -137,56 +141,63 @@ export function SettingsForm({ settings }: { settings: SettingsValues }) {
         </div>
       </div>
 
-      <fieldset className="space-y-3">
-        <legend className="label">Horario</legend>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="openingTime" className="label">Apertura</label>
-            <input
-              id="openingTime"
-              type="time"
-              className="input"
-              step={unit * 60}
-              value={form.openingTime}
-              onChange={set("openingTime")}
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="closingTime" className="label">Cierre</label>
-            <input
-              id="closingTime"
-              type="time"
-              className="input"
-              step={unit * 60}
-              value={form.closingTime}
-              onChange={set("closingTime")}
-              required
-            />
-          </div>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend className="label">Días abiertos</legend>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {WEEK.map((d) => (
-            <label
+      <fieldset className="space-y-2">
+        <legend className="label">Días y horarios de atención</legend>
+        {WEEK.map((d) => {
+          const day = days[d.value];
+          return (
+            <div
               key={d.value}
-              className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm ${
-                days.has(d.value) ? "border-brass text-ink" : "border-line text-muted"
+              className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2 ${
+                day.open ? "border-brass/60" : "border-line"
               }`}
             >
-              <input
-                type="checkbox"
-                className="size-4 accent-[var(--color-brass)]"
-                checked={days.has(d.value)}
-                onChange={() => toggleDay(d.value)}
-              />
-              {d.label}
-            </label>
-          ))}
-        </div>
+              <label className="flex w-28 cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-[var(--color-brass)]"
+                  checked={day.open}
+                  onChange={(e) => updateDay(d.value, { open: e.target.checked })}
+                />
+                <span className={day.open ? "text-ink" : "text-muted"}>{d.label}</span>
+              </label>
+              {day.open ? (
+                <div className="flex flex-1 items-center gap-2">
+                  <input
+                    type="time"
+                    className="input min-w-0 flex-1 px-3 py-2"
+                    step={unit * 60}
+                    value={day.from}
+                    onChange={(e) => updateDay(d.value, { from: e.target.value })}
+                    aria-label={`${d.label}: apertura`}
+                    required
+                  />
+                  <span className="text-sm text-muted">a</span>
+                  <input
+                    type="time"
+                    className="input min-w-0 flex-1 px-3 py-2"
+                    step={unit * 60}
+                    value={day.to}
+                    onChange={(e) => updateDay(d.value, { to: e.target.value })}
+                    aria-label={`${d.label}: cierre`}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="btn-ghost shrink-0 px-2.5 py-2"
+                    onClick={() => copyToOpenDays(d.value)}
+                    title="Copiar este horario a los demás días abiertos"
+                    aria-label={`Copiar el horario del ${d.label.toLowerCase()} a los demás días abiertos`}
+                  >
+                    <CopyCheck className="size-4" aria-hidden />
+                  </button>
+                </div>
+              ) : (
+                <span className="text-sm text-muted">Cerrado</span>
+              )}
+            </div>
+          );
+        })}
       </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-3">

@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, MessageCircle, Settings } from "lucide-react
 import { isAdmin } from "@/lib/admin-auth";
 import { ACTIVE_STATUSES, getAgenda, weekStartOf } from "@/lib/booking";
 import { CANCEL_REASON_LABEL, formatPrice, STATUS_LABEL, whatsappLink } from "@/lib/format";
+import { hoursFor } from "@/lib/schedule";
 import {
   addDaysToKey,
   dateKeyOf,
@@ -60,7 +61,8 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   ].sort((x, y) => x.at.getTime() - y.at.getTime());
 
   const income = active.reduce((sum, a) => sum + a.price, 0);
-  const times = gridTimes(settings.openingTime, settings.closingTime, settings.slotDurationMin);
+  const hours = hoursFor(settings.weeklyHours, date);
+  const times = hours ? gridTimes(hours.open, hours.close, settings.slotDurationMin) : null;
 
   return (
     <div className="space-y-6">
@@ -240,7 +242,11 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         )}
       </section>
 
-      <BlockForm date={date} times={times} />
+      {times ? (
+        <BlockForm key={date} date={date} times={times} />
+      ) : (
+        <p className="card text-sm text-muted">Ese día el local está cerrado: no hay horarios para bloquear.</p>
+      )}
     </div>
   );
 }

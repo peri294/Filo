@@ -19,6 +19,7 @@ import {
 } from "@/lib/booking";
 import { getSettings, prisma } from "@/lib/db";
 import { updateSettings } from "@/lib/admin-config";
+import { describeWeek } from "@/lib/schedule";
 import { isDateKey, zonedInstant } from "@/lib/time";
 
 // Lunes 5/10/2026 a las 08:00 en Argentina (UTC-3). La barbería abre lunes a sábado de 09 a 20.
@@ -31,6 +32,7 @@ const MIN = 60_000;
 let corte: number; // 30 min = 1 unidad de agenda
 let combo: number; // 60 min = 2 unidades de agenda
 const LOCKS_COMBO = 60 / LOCK_UNIT_MIN; // SlotLock de 5 minutos que ocupa un combo
+const LUNES_A_SABADO = [1, 2, 3, 4, 5, 6];
 let n = 0;
 
 function setNow(date: Date) {
@@ -483,7 +485,7 @@ describe("arreglos de la revisión de seguridad", () => {
     const settings = await getSettings();
     await updateSettings({
       ...settings,
-      daysOpen: settings.daysOpen.split(",").map(Number),
+      weeklyHours: LUNES_A_SABADO.map((weekday) => ({ weekday, open: "09:00", close: "20:00" })),
       slotDurationMin: 15,
     });
     const cortes = await slotsOf(MIERCOLES, corte);
@@ -520,6 +522,56 @@ describe("arreglos de la revisión de seguridad", () => {
     await expectBookingError(createBlock(MIERCOLES, "19:00", "21:00"), 400);
   });
 
+  it("rechaza fechas que no existen", () => {
+    expect(isDateKey("2026-02-31")).toBe(false);
+  });
+});
+
+describe("horario por día de la semana", () => {
+  const SABADO = "2026-10-10";
+  const base = async () => ({ ...(await getSettings()), slotDurationMin: 30 });
+
+  it("cada día usa su propio horario y un día sin horario queda cerrado", async () => {
+    await updateSettings({
+      ...(await base()),
+      weeklyHours: [
+        ...[1, 2, 3, 4, 5].map((weekday) => ({ weekday, open: "09:00", close: "20:00" })),
+        { weekday: 6, open: "10:00", close: "14:00" },
+      ],
+    });
+    const sabado = await getAvailability(SABADO, corte);
+    expect(sabado.slots[0].time).toBe("10:00");
+    expect(sabado.slots.at(-1)!.time).toBe("13:30");
+    const miercoles = await getAvailability(MIERCOLES, corte);
+    expect(miercoles.slots.at(-1)!.time).toBe("19:30");
+    // El combo de 60 min no puede empezar 13:30 si el sábado cierra 14:00.
+    await expectBookingError(book({ date: SABADO, time: "13:30" }), 400);
+    await expect(book({ date: SABADO, time: "13:00" })).resolves.toBeTruthy();
+    // Los bloqueos respetan el horario del día.
+    await expectBookingError(createBlock(SABADO, "15:00", "16:00"), 400);
+    await expectBookingError(createBlock(DOMINGO, "10:00", "11:00"), 400);
+  });
+
+  it("valida cada día por separado", async () => {
+    const settings = await base();
+    await expectBookingError(
+      updateSettings({ ...settings, weeklyHours: [{ weekday: 6, open: "14:00", close: "10:00" }] }),
+      400,
+    );
+    await expectBookingError(
+      updateSettings({ ...settings, weeklyHours: [{ weekday: 6, open: "10:15", close: "14:00" }] }),
+      400,
+    );
+  });
+
+  it("agrupa los días seguidos con el mismo horario", () => {
+    expect(
+      describeWeek('{"1":["09:00","20:00"],"2":["09:00","20:00"],"3":["09:00","20:00"],"6":["10:00","14:00"]}'),
+    ).toEqual(["Lunes a Miércoles 09:00 a 20:00", "Sábado 10:00 a 14:00"]);
+  });
+});
+
+describe("validaciones de fechas", () => {
   it("rechaza fechas que no existen", () => {
     expect(isDateKey("2026-02-31")).toBe(false);
     expect(isDateKey("2026-13-01")).toBe(false);

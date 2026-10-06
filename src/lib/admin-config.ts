@@ -2,19 +2,23 @@ import { z } from "zod";
 import { prisma, getSettings } from "@/lib/db";
 import { BookingError, LOCK_UNIT_MIN } from "@/lib/booking";
 import { normalizePhone } from "@/lib/format";
+import { serializeWeeklyHours, WEEK, type WeeklyHours } from "@/lib/schedule";
 import { isTimeKey, minutesOf } from "@/lib/time";
 
 // ---------- Datos del local ----------
+
+const dayHoursSchema = z.object({
+  weekday: z.number().int().min(0).max(6),
+  open: z.string().refine(isTimeKey, "Horario de apertura inválido (HH:mm)"),
+  close: z.string().refine(isTimeKey, "Horario de cierre inválido (HH:mm)"),
+});
 
 export const settingsSchema = z.object({
   salonName: z.string().trim().min(1, "Ingresá el nombre del local").max(80, "El nombre es muy largo"),
   salonAddress: z.string().trim().max(160, "La dirección es muy larga"),
   salonPhone: z.string().trim().min(1, "Ingresá el WhatsApp del barbero"),
-  openingTime: z.string().refine(isTimeKey, "Horario de apertura inválido (HH:mm)"),
-  closingTime: z.string().refine(isTimeKey, "Horario de cierre inválido (HH:mm)"),
-  daysOpen: z
-    .array(z.number().int().min(0).max(6))
-    .min(1, "Elegí al menos un día de atención"),
+  // Solo los días abiertos, cada uno con su horario.
+  weeklyHours: z.array(dayHoursSchema).min(1, "Elegí al menos un día de atención").max(7),
   slotDurationMin: z
     .number({ error: "La unidad de agenda tiene que ser un número" })
     .int("La unidad de agenda tiene que ser un número entero")
@@ -34,25 +38,33 @@ export const settingsSchema = z.object({
 
 export type SettingsInput = z.infer<typeof settingsSchema>;
 
+const dayLabel = (weekday: number) => WEEK.find((d) => d.value === weekday)!.label;
+
 export async function updateSettings(input: SettingsInput) {
   const phone = normalizePhone(input.salonPhone);
   if (!phone) throw new BookingError(400, "Ingresá un WhatsApp válido con código de área (ej: 11 2345 6789)");
 
   const unit = input.slotDurationMin;
-  const open = minutesOf(input.openingTime);
-  const close = minutesOf(input.closingTime);
-  if (close <= open) throw new BookingError(400, "El horario de cierre tiene que ser posterior al de apertura");
-  if (open % unit !== 0 || close % unit !== 0) {
-    throw new BookingError(
-      400,
-      `Los horarios de apertura y cierre tienen que coincidir con la unidad de agenda de ${unit} minutos`,
-    );
-  }
-
   // Los turnos se guardan en bloques fijos de 5 minutos (LOCK_UNIT_MIN), así que cambiar la
   // grilla no puede generar superposiciones con turnos ya reservados.
   if (unit % LOCK_UNIT_MIN !== 0) {
     throw new BookingError(400, `La unidad de agenda tiene que ser múltiplo de ${LOCK_UNIT_MIN} minutos`);
+  }
+
+  const hours: WeeklyHours = {};
+  for (const day of input.weeklyHours) {
+    const label = dayLabel(day.weekday);
+    if (hours[day.weekday]) throw new BookingError(400, `${label} figura dos veces`);
+    const open = minutesOf(day.open);
+    const close = minutesOf(day.close);
+    if (close <= open) throw new BookingError(400, `${label}: el cierre tiene que ser posterior a la apertura`);
+    if (open % unit !== 0 || close % unit !== 0) {
+      throw new BookingError(
+        400,
+        `${label}: la apertura y el cierre tienen que coincidir con la unidad de agenda de ${unit} minutos`,
+      );
+    }
+    hours[day.weekday] = { open: day.open, close: day.close };
   }
 
   const current = await getSettings();
@@ -68,25 +80,16 @@ export async function updateSettings(input: SettingsInput) {
     }
   }
 
-  await prisma.businessSetting.upsert({
-    where: { id: 1 },
-    create: { id: 1, ...toSettingsData(input, phone) },
-    update: toSettingsData(input, phone),
-  });
-}
-
-function toSettingsData(input: SettingsInput, phone: string) {
-  return {
+  const data = {
     salonName: input.salonName,
     salonAddress: input.salonAddress,
     salonPhone: phone,
-    openingTime: input.openingTime,
-    closingTime: input.closingTime,
-    daysOpen: [...new Set(input.daysOpen)].sort((a, b) => a - b).join(","),
-    slotDurationMin: input.slotDurationMin,
+    weeklyHours: serializeWeeklyHours(hours),
+    slotDurationMin: unit,
     bookingWindowDays: input.bookingWindowDays,
     minNoticeMin: input.minNoticeMin,
   };
+  await prisma.businessSetting.upsert({ where: { id: 1 }, create: { id: 1, ...data }, update: data });
 }
 
 // ---------- Servicios ----------

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarCheck, ChevronRight, Clock, MapPin, Search } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { formatPrice } from "@/lib/format";
+import { describeWeek } from "@/lib/schedule";
 import { getSalon, pageMetadata } from "./seo";
 
 export async function generateMetadata() {
@@ -9,15 +10,6 @@ export async function generateMetadata() {
   return pageMetadata({
     description: `Reservá tu turno en ${salonName}: elegí el servicio, mirá los horarios libres y listo. Sin crear cuenta.`,
   });
-}
-
-const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-
-function describeDays(daysOpen: string) {
-  const days = daysOpen.split(",").map(Number).sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
-  const isRange = days.every((d, i) => i === 0 || ((days[i - 1] + 1) % 7) === d);
-  if (days.length > 2 && isRange) return `${DAY_NAMES[days[0]]} a ${DAY_NAMES[days[days.length - 1]]}`;
-  return days.map((d) => DAY_NAMES[d]).join(", ");
 }
 
 export default async function Home() {
@@ -74,10 +66,14 @@ export default async function Home() {
       </section>
 
       <section aria-label="Horarios y dirección" className="card grid gap-3 text-sm sm:grid-cols-2">
-        <p className="flex items-center gap-2">
-          <Clock className="size-4 shrink-0 text-brass" aria-hidden />
-          {describeDays(settings.daysOpen)} · {settings.openingTime} a {settings.closingTime}
-        </p>
+        <div className="flex items-start gap-2">
+          <Clock className="mt-0.5 size-4 shrink-0 text-brass" aria-hidden />
+          <ul>
+            {describeWeek(settings.weeklyHours).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
         {settings.salonAddress && (
           <p className="flex items-center gap-2">
             <MapPin className="size-4 shrink-0 text-brass" aria-hidden /> {settings.salonAddress}

@@ -13,10 +13,10 @@ model BusinessSetting {
   salonName         String @default("Barbería")
   salonAddress      String @default("")
   salonPhone        String @default("5491100000000") // WhatsApp del barbero, sin + ni espacios
-  openingTime       String @default("09:00") // HH:mm, hora de Argentina
-  closingTime       String @default("20:00")
+  // Horario por día de la semana (0 = domingo ... 6 = sábado), en hora de Argentina.
+  // JSON: {"1": ["09:00", "20:00"], ...}. Un día que no figura está cerrado. Ver src/lib/schedule.ts.
+  weeklyHours       String @default("{\"1\":[\"09:00\",\"20:00\"],\"2\":[\"09:00\",\"20:00\"],\"3\":[\"09:00\",\"20:00\"],\"4\":[\"09:00\",\"20:00\"],\"5\":[\"09:00\",\"20:00\"],\"6\":[\"09:00\",\"20:00\"]}")
   slotDurationMin   Int    @default(30) // Unidad mínima de la agenda
-  daysOpen          String @default("1,2,3,4,5,6") // 0 = domingo ... 6 = sábado
   bookingWindowDays Int    @default(30) // Cuántos días hacia adelante se puede reservar
   minNoticeMin      Int    @default(30) // Anticipación mínima para reservar
 }
