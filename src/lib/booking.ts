@@ -279,12 +279,14 @@ export async function adminConfirm(id: string) {
 }
 
 export async function adminReject(id: string) {
+  await releaseExpired();
   const appt = await prisma.appointment.findUnique({ where: { id } });
   if (!appt || appt.status !== "PENDIENTE_WHATSAPP") throw new BookingError(409, "El turno ya no está pendiente");
   await cancel(id, "RECHAZADO");
 }
 
 export async function adminCancel(id: string) {
+  await releaseExpired();
   const appt = await prisma.appointment.findUnique({ where: { id } });
   if (!appt || !ACTIVE_STATUSES.includes(appt.status)) throw new BookingError(409, "El turno ya está cancelado");
   // TODO(Mercado Pago): permitir reembolso total o del 50% según lo acordado con el cliente.
@@ -321,7 +323,9 @@ export async function createBlock(dateKey: string, from: string, to: string, rea
 }
 
 export async function deleteBlock(id: string) {
-  await prisma.blockedSlot.delete({ where: { id } });
+  // deleteMany no tira error si no existe (delete tiraría P2025 y la API respondería 500).
+  const { count } = await prisma.blockedSlot.deleteMany({ where: { id } });
+  if (count === 0) throw new BookingError(404, "El bloqueo no existe");
 }
 
 /** Lunes de la semana de la fecha dada. */

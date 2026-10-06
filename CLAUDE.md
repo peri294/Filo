@@ -15,7 +15,8 @@ npx prisma db seed
 npm run dev                   # http://localhost:3000 · panel en /admin (clave: ADMIN_PASSWORD de .env)
 ```
 
-Chequeos antes de dar algo por terminado: `npm run typecheck`, `npm run lint`, `npm run build`.
+Chequeos antes de dar algo por terminado: `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`.
+Los tests (Vitest, en `tests/`) usan una base aparte `test.db` que se recrea con las migraciones en cada corrida; nunca tocan `dev.db`.
 
 ## Stack
 
