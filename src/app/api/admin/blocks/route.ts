@@ -10,7 +10,7 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
-  return handleAdmin(async () => {
+  return handleAdmin(request, async () => {
     const { date, from, to, reason } = schema.parse(await request.json());
     await createBlock(date, from, to, reason);
   });

@@ -6,14 +6,14 @@ const idSchema = z.coerce.number({ error: "Servicio inválido" }).int("Servicio 
 
 export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/services/[id]">) {
   const { id } = await ctx.params;
-  return handleAdmin(async () => {
+  return handleAdmin(request, async () => {
     const input = servicePatchSchema.parse(await request.json());
     return updateService(idSchema.parse(id), input);
   });
 }
 
 /** Solo borra servicios sin turnos; si tiene turnos responde 409 y hay que desactivarlo. */
-export async function DELETE(_request: Request, ctx: RouteContext<"/api/admin/services/[id]">) {
+export async function DELETE(request: Request, ctx: RouteContext<"/api/admin/services/[id]">) {
   const { id } = await ctx.params;
-  return handleAdmin(() => deleteService(idSchema.parse(id)));
+  return handleAdmin(request, () => deleteService(idSchema.parse(id)));
 }

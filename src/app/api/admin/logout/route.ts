@@ -1,6 +1,6 @@
 import { logout } from "@/lib/admin-auth";
-import { handle } from "@/lib/http";
+import { handleSameSite } from "@/lib/http";
 
-export async function POST() {
-  return handle(() => logout());
+export async function POST(request: Request) {
+  return handleSameSite(request, () => logout());
 }

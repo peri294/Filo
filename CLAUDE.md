@@ -10,7 +10,7 @@ Este proyecto vive en la carpeta `PagWeb/` del repo `proyectos`: correr todos lo
 ```bash
 cp .env.example .env          # .env no se commitea
 npm install                   # corre prisma generate en el postinstall
-npx prisma migrate reset --force
+npx prisma migrate deploy     # (migrate reset pide confirmación escrita del usuario cuando lo corre una IA)
 npx prisma db seed
 npm run dev                   # http://localhost:3000 · panel en /admin (clave: ADMIN_PASSWORD de .env)
 ```
@@ -34,12 +34,19 @@ Los tests (Vitest, en `tests/`) usan una base aparte `test.db` que se recrea con
 
 ## Reglas de negocio que no hay que romper
 
-- Cada unidad de agenda ocupada es una fila en `SlotLock` con `startsAt` único: así la base impide reservas dobles.
-  Al cancelar o vencer un turno hay que borrar sus `SlotLock`.
+- Cada bloque de 5 minutos ocupado (`LOCK_UNIT_MIN`, fijo, no depende de la grilla) es una fila en `SlotLock`
+  con `startsAt` único: así la base impide reservas dobles. `PhoneHold` hace lo mismo con "1 turno activo por celular".
+  Al cancelar o vencer un turno se borran los dos (`releaseHolds`).
 - Efectivo: el turno queda `PENDIENTE_WHATSAPP` 15 minutos. Si el cliente marca "Ya envié el mensaje"
-  (`clientNotifiedAt`) deja de vencer y decide el barbero. Los vencidos se liberan en `releaseExpired()`, sin cron.
-- Anti-spam: 1 turno activo por celular y máximo 3 reservas por hora por IP.
-- El cliente cancela solo si faltan más de 24 h. El link del comprobante usa `accessToken` (largo, no adivinable).
+  (`clientNotifiedAt`), el vencimiento se extiende hasta 12 h (sin pasar el inicio del turno) para que el barbero confirme.
+  Los vencidos se liberan en `releaseExpired()`, sin cron.
+- Anti-spam (decisión del dueño, no cambiar a "1 por IP"): 1 turno activo por celular y máximo 3 reservas por hora por IP.
+  La IP sale de `clientIp()` en `src/lib/http.ts` (en Vercel, `x-real-ip`).
+- El cliente cancela solo si faltan más de 24 h. El link del comprobante usa `accessToken` (largo, no adivinable);
+  el código corto `TURN-XXXXXX` solo sirve para buscar el turno junto con el celular (con límite de intentos).
+- Reembolsos (con Mercado Pago): solo totales, nunca parciales.
+- Panel: sesiones en la tabla `AdminSession`; límites de intentos en `RateLimit` (no en memoria: Vercel tiene varias instancias).
+  Las rutas con cookie usan `handleAdmin`/`handleSameSite`, que rechazan pedidos de otro origen.
 - Mercado Pago todavía NO se integra (se hará más adelante con el MCP de Mercado Pago). No tocar esa parte.
 
 ## Convenciones

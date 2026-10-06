@@ -7,7 +7,7 @@ const actions = { confirm: adminConfirm, reject: adminReject, cancel: adminCance
 
 export async function POST(request: Request, ctx: RouteContext<"/api/admin/appointments/[id]">) {
   const { id } = await ctx.params;
-  return handleAdmin(async () => {
+  return handleAdmin(request, async () => {
     const { action } = schema.parse(await request.json());
     await actions[action](id);
   });

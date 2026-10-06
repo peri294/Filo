@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { prisma, getSettings } from "@/lib/db";
-import { ACTIVE_STATUSES, BookingError, releaseExpired } from "@/lib/booking";
+import { BookingError, LOCK_UNIT_MIN } from "@/lib/booking";
 import { normalizePhone } from "@/lib/format";
-import { dateKeyOf, formatShortDay, formatTime, isTimeKey, minutesOf } from "@/lib/time";
+import { isTimeKey, minutesOf } from "@/lib/time";
 
 // ---------- Datos del local ----------
 
@@ -49,14 +49,15 @@ export async function updateSettings(input: SettingsInput) {
     );
   }
 
-  const current = await getSettings();
-  const unitChanged = current.slotDurationMin !== unit;
-  // La grilla queda definida por la unidad y por la fase de la apertura dentro de ella.
-  // Mover la apertura a otro horario de la misma grilla (ej. 09:00 → 10:00 con unidad 30) no la cambia.
-  const gridChanged = unitChanged || open % unit !== minutesOf(current.openingTime) % current.slotDurationMin;
+  // Los turnos se guardan en bloques fijos de 5 minutos (LOCK_UNIT_MIN), así que cambiar la
+  // grilla no puede generar superposiciones con turnos ya reservados.
+  if (unit % LOCK_UNIT_MIN !== 0) {
+    throw new BookingError(400, `La unidad de agenda tiene que ser múltiplo de ${LOCK_UNIT_MIN} minutos`);
+  }
 
+  const current = await getSettings();
   // Los servicios activos tienen que durar un múltiplo de la nueva unidad.
-  if (unitChanged) {
+  if (current.slotDurationMin !== unit) {
     const services = await prisma.service.findMany({ where: { active: true }, select: { name: true, durationMin: true } });
     const misfit = services.filter((s) => s.durationMin % unit !== 0);
     if (misfit.length > 0) {
@@ -67,45 +68,10 @@ export async function updateSettings(input: SettingsInput) {
     }
   }
 
-  // Las reservas provisorias vencidas no cuentan como turnos a futuro.
-  if (gridChanged) await releaseExpired();
-
-  await prisma.$transaction(async (tx) => {
-    // Los SlotLock se guardan con la grilla vigente al reservar. Si cambia la alineación
-    // (unidad o fase de la apertura) con turnos o bloqueos a futuro, la base dejaría de
-    // impedir superposiciones. Por eso ese cambio solo se permite con la agenda futura vacía.
-    if (gridChanged) {
-      const now = new Date();
-      const [appointments, blockCount] = await Promise.all([
-        tx.appointment.findMany({
-          where: { status: { in: ACTIVE_STATUSES }, endsAt: { gt: now } },
-          select: { code: true, startsAt: true, endsAt: true },
-          orderBy: { startsAt: "asc" },
-        }),
-        tx.blockedSlot.count({ where: { endsAt: { gt: now } } }),
-      ]);
-      if (appointments.length > 0 || blockCount > 0) {
-        const detail: string[] = [];
-        if (appointments.length > 0) {
-          const list = appointments
-            .slice(0, 5)
-            .map((a) => `${a.code} (${formatShortDay(dateKeyOf(a.startsAt))} ${formatTime(a.startsAt)})`)
-            .join(", ");
-          detail.push(`turnos: ${list}${appointments.length > 5 ? ` y ${appointments.length - 5} más` : ""}`);
-        }
-        if (blockCount > 0) detail.push(`${blockCount} bloqueo${blockCount === 1 ? "" : "s"} de horario`);
-        throw new BookingError(
-          409,
-          `Hay turnos o bloqueos a futuro con la grilla actual; no se puede cambiar la duración de la unidad ni el horario de apertura hasta que pasen o se cancelen (${detail.join("; ")}). El horario de cierre y los días abiertos sí se pueden cambiar.`,
-        );
-      }
-    }
-
-    await tx.businessSetting.upsert({
-      where: { id: 1 },
-      create: { id: 1, ...toSettingsData(input, phone) },
-      update: toSettingsData(input, phone),
-    });
+  await prisma.businessSetting.upsert({
+    where: { id: 1 },
+    create: { id: 1, ...toSettingsData(input, phone) },
+    update: toSettingsData(input, phone),
   });
 }
 

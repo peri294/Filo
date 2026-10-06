@@ -58,12 +58,13 @@ model Appointment {
   pricePaid      Int?
   mpPreferenceId String?
   mpPaymentId    String?
-  refundStatus   String? // "TOTAL" | "PARCIAL_50"
+  refundStatus   String? // "TOTAL"
   refundAmount   Int?
   refundId       String?
 
   createdAt DateTime   @default(now())
   slotLocks SlotLock[]
+  phoneHold PhoneHold?
 
   @@index([startsAt])
   @@index([clientPhone, status])
@@ -81,9 +82,9 @@ model BlockedSlot {
   slotLocks SlotLock[]
 }
 
-// Una fila por cada unidad de agenda ocupada. La restricción única sobre
-// startsAt hace que la base de datos impida dos reservas en el mismo horario,
-// aunque lleguen al mismo tiempo.
+// Una fila por cada bloque de 5 minutos ocupado (LOCK_UNIT_MIN en booking.ts, fijo e
+// independiente de la grilla configurada). La restricción única sobre startsAt hace que
+// la base de datos impida dos reservas en el mismo horario, aunque lleguen al mismo tiempo.
 model SlotLock {
   startsAt      DateTime     @id
   appointmentId String?
@@ -93,4 +94,27 @@ model SlotLock {
 
   @@index([appointmentId])
   @@index([blockedSlotId])
+}
+
+// Un turno activo por celular, garantizado por la base (igual que SlotLock con los horarios).
+// Se borra al cancelar o vencer el turno; si el turno ya pasó, se limpia en la próxima reserva.
+model PhoneHold {
+  phone         String      @id
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+}
+
+// Sesiones del panel del barbero. La cookie lleva un id aleatorio; acá se guarda su hash.
+model AdminSession {
+  idHash    String   @id
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// Contadores para limitar intentos (login del panel, búsqueda de turnos).
+// Se guardan en la base para que funcionen con varias instancias en Vercel.
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
 }

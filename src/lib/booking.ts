@@ -2,6 +2,7 @@ import { randomBytes, randomInt } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma, getSettings, type Settings } from "@/lib/db";
 import { normalizePhone } from "@/lib/format";
+import { consume, isLimited } from "@/lib/rate-limit";
 import {
   addDaysToKey,
   formatTime,
@@ -17,8 +18,15 @@ export const ACTIVE_STATUSES = ["PENDIENTE_WHATSAPP", "PENDIENTE_PAGO", "CONFIRM
 const PENDING_STATUSES = ["PENDIENTE_WHATSAPP", "PENDIENTE_PAGO"];
 
 export const CASH_HOLD_MIN = 15;
+/** Cuánto más se retiene el horario después de que el cliente avisa que mandó el WhatsApp. */
+export const NOTIFIED_HOLD_HOURS = 12;
 export const SELF_CANCEL_MIN_HOURS = 24;
+/** Tamaño fijo de cada SlotLock. No depende de la grilla configurada, así cambiarla no rompe nada. */
+export const LOCK_UNIT_MIN = 5;
 const MAX_BOOKINGS_PER_IP_PER_HOUR = 3;
+const LOOKUP_WINDOW_MS = 15 * 60_000;
+const MAX_LOOKUPS_PER_IP = 10;
+const MAX_LOOKUP_FAILS_PER_CODE = 5;
 
 const MINUTE = 60_000;
 
@@ -35,27 +43,38 @@ function isUniqueViolation(e: unknown) {
   return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
 }
 
+type Tx = Prisma.TransactionClient;
+
+/** Libera el horario y el celular de turnos cancelados. */
+async function releaseHolds(tx: Tx, where: Prisma.AppointmentWhereInput) {
+  await tx.slotLock.deleteMany({ where: { appointment: where } });
+  await tx.phoneHold.deleteMany({ where: { appointment: where } });
+}
+
 /**
  * Cancela las reservas provisorias vencidas y libera sus horarios.
  * Se llama antes de leer o modificar la agenda, así no hace falta un cron.
- * Una reserva en efectivo donde el cliente ya avisó por WhatsApp no vence sola.
  */
 export async function releaseExpired() {
   const now = new Date();
-  const { count } = await prisma.appointment.updateMany({
-    where: { status: { in: PENDING_STATUSES }, expiresAt: { lt: now }, clientNotifiedAt: null },
-    data: { status: "CANCELADO", cancelReason: "EXPIRADO", cancelledAt: now },
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.appointment.updateMany({
+      where: { status: { in: PENDING_STATUSES }, expiresAt: { lt: now } },
+      data: { status: "CANCELADO", cancelReason: "EXPIRADO", cancelledAt: now },
+    });
+    if (count > 0) await releaseHolds(tx, { status: "CANCELADO" });
   });
-  if (count > 0) {
-    await prisma.slotLock.deleteMany({ where: { appointment: { status: "CANCELADO" } } });
-  }
 }
 
-/** Inicios de cada unidad de agenda entre start (incluido) y end (excluido). */
+/** Inicios de cada bloque de unitMin minutos entre start (incluido) y end (excluido). */
 function unitStarts(start: Date, end: Date, unitMin: number) {
   const out: Date[] = [];
   for (let t = start.getTime(); t < end.getTime(); t += unitMin * MINUTE) out.push(new Date(t));
   return out;
+}
+
+function lockRows(start: Date, end: Date) {
+  return unitStarts(start, end, LOCK_UNIT_MIN).map((u) => ({ startsAt: u }));
 }
 
 function unitsFor(durationMin: number, settings: Settings) {
@@ -92,8 +111,7 @@ export async function getAvailability(dateKey: string, serviceId: number) {
 
   await releaseExpired();
 
-  const unit = settings.slotDurationMin;
-  const needed = unitsFor(service.durationMin, settings);
+  const durationMs = unitsFor(service.durationMin, settings) * settings.slotDurationMin * MINUTE;
   const open = zonedInstant(dateKey, settings.openingTime);
   const close = zonedInstant(dateKey, settings.closingTime);
   const earliest = Date.now() + settings.minNoticeMin * MINUTE;
@@ -105,11 +123,11 @@ export async function getAvailability(dateKey: string, serviceId: number) {
   const taken = new Set(locks.map((l) => l.startsAt.getTime()));
 
   const slots: SlotOption[] = [];
-  const units = unitStarts(open, close, unit);
-  for (let i = 0; i + needed <= units.length; i++) {
-    const start = units[i];
+  for (const start of unitStarts(open, close, settings.slotDurationMin)) {
+    const end = new Date(start.getTime() + durationMs);
+    if (end > close) break;
     if (start.getTime() < earliest) continue;
-    const free = units.slice(i, i + needed).every((u) => !taken.has(u.getTime()));
+    const free = unitStarts(start, end, LOCK_UNIT_MIN).every((u) => !taken.has(u.getTime()));
     slots.push({ time: formatTime(start), available: free });
   }
   return { dateKey, open: true, slots };
@@ -121,6 +139,11 @@ function generateCode() {
   for (let i = 0; i < 6; i++) code += alphabet[randomInt(alphabet.length)];
   return `TURN-${code}`;
 }
+
+const PHONE_TAKEN = new BookingError(
+  409,
+  'Ya tenés un turno activo con ese teléfono. Podés verlo o cancelarlo desde "Mi turno".',
+);
 
 export type CreateAppointmentInput = {
   serviceId: number;
@@ -149,12 +172,7 @@ export async function createAppointment(input: CreateAppointmentInput, clientIp:
   const activeForPhone = await prisma.appointment.count({
     where: { clientPhone: phone, status: { in: ACTIVE_STATUSES }, endsAt: { gt: now } },
   });
-  if (activeForPhone > 0) {
-    throw new BookingError(
-      409,
-      "Ya tenés un turno activo con ese teléfono. Podés verlo o cancelarlo desde \"Mi turno\".",
-    );
-  }
+  if (activeForPhone > 0) throw PHONE_TAKEN;
 
   // Anti-spam: límite de reservas por IP (la IP se comparte en redes móviles, por eso no es 1).
   const recentFromIp = await prisma.appointment.count({
@@ -176,6 +194,11 @@ export async function createAppointment(input: CreateAppointmentInput, clientIp:
   const startsAt = zonedInstant(input.date, input.time);
   const endsAt = new Date(startsAt.getTime() + unitsFor(service.durationMin, settings) * settings.slotDurationMin * MINUTE);
 
+  // Si el turno anterior de este celular ya pasó, su PhoneHold quedó: se libera acá.
+  await prisma.phoneHold.deleteMany({
+    where: { phone, appointment: { OR: [{ status: "CANCELADO" }, { endsAt: { lte: now } }] } },
+  });
+
   try {
     return await prisma.appointment.create({
       data: {
@@ -191,15 +214,15 @@ export async function createAppointment(input: CreateAppointmentInput, clientIp:
         paymentMethod: input.paymentMethod,
         status: "PENDIENTE_WHATSAPP",
         expiresAt: new Date(now.getTime() + CASH_HOLD_MIN * MINUTE),
-        slotLocks: {
-          create: unitStarts(startsAt, endsAt, settings.slotDurationMin).map((u) => ({ startsAt: u })),
-        },
+        slotLocks: { create: lockRows(startsAt, endsAt) },
+        phoneHold: { create: { phone } },
       },
     });
   } catch (e) {
-    // Otra persona reservó el mismo horario en el mismo instante.
-    if (isUniqueViolation(e)) throw new BookingError(409, "Ese horario se acaba de ocupar. Elegí otro.");
-    throw e;
+    if (!isUniqueViolation(e)) throw e;
+    // Llegaron dos reservas al mismo tiempo: decide la restricción única que haya chocado.
+    if (await prisma.phoneHold.findUnique({ where: { phone } })) throw PHONE_TAKEN;
+    throw new BookingError(409, "Ese horario se acaba de ocupar. Elegí otro.");
   }
 }
 
@@ -208,17 +231,25 @@ export async function getAppointmentByToken(token: string) {
   return prisma.appointment.findUnique({ where: { accessToken: token }, include: { service: true } });
 }
 
-/** El cliente indica que ya mandó el WhatsApp: el turno deja de vencer y espera al barbero. */
+/**
+ * El cliente indica que ya mandó el WhatsApp. Como no se puede comprobar, no anula el
+ * vencimiento: lo extiende NOTIFIED_HOLD_HOURS (sin pasar el inicio del turno) para darle
+ * tiempo al barbero a confirmar.
+ */
 export async function markClientNotified(token: string) {
   await releaseExpired();
+  const now = new Date();
+  const appt = await prisma.appointment.findUnique({ where: { accessToken: token }, select: { startsAt: true } });
+  if (!appt) throw new BookingError(404, "Turno no encontrado");
+  const holdUntil = Math.min(now.getTime() + NOTIFIED_HOLD_HOURS * 60 * MINUTE, appt.startsAt.getTime());
   const { count } = await prisma.appointment.updateMany({
     where: {
       accessToken: token,
       status: "PENDIENTE_WHATSAPP",
       clientNotifiedAt: null,
-      expiresAt: { gt: new Date() },
+      expiresAt: { gt: now },
     },
-    data: { clientNotifiedAt: new Date() },
+    data: { clientNotifiedAt: now, expiresAt: new Date(Math.max(holdUntil, now.getTime() + CASH_HOLD_MIN * MINUTE)) },
   });
   if (count === 0) throw new BookingError(409, "El turno ya no está pendiente de confirmación");
 }
@@ -230,14 +261,16 @@ export function canSelfCancel(appt: { status: string; startsAt: Date }) {
   );
 }
 
-async function cancel(id: string, reason: string) {
-  await prisma.$transaction([
-    prisma.appointment.update({
-      where: { id },
+/** Cancela solo si el turno sigue en alguno de los estados esperados. Devuelve si lo canceló. */
+async function cancel(id: string, reason: string, from: string[]) {
+  return prisma.$transaction(async (tx) => {
+    const { count } = await tx.appointment.updateMany({
+      where: { id, status: { in: from } },
       data: { status: "CANCELADO", cancelReason: reason, cancelledAt: new Date() },
-    }),
-    prisma.slotLock.deleteMany({ where: { appointmentId: id } }),
-  ]);
+    });
+    if (count > 0) await releaseHolds(tx, { id });
+    return count > 0;
+  });
 }
 
 export async function cancelByClient(token: string) {
@@ -251,17 +284,24 @@ export async function cancelByClient(token: string) {
     );
   }
   // TODO(Mercado Pago): si el turno está pago, devolver el 100% antes de cancelar.
-  await cancel(appt.id, "CLIENTE");
+  if (!(await cancel(appt.id, "CLIENTE", ACTIVE_STATUSES))) throw new BookingError(409, "El turno ya está cancelado");
 }
 
-export async function lookupAppointment(code: string, phone: string) {
+export async function lookupAppointment(code: string, phone: string, clientIp: string) {
+  const normalizedCode = code.trim().toUpperCase();
+  const codeKey = `lookup:code:${normalizedCode}`;
+  const tooMany = new BookingError(429, "Demasiados intentos. Probá de nuevo en unos minutos.");
+  if (!(await consume(`lookup:ip:${clientIp}`, MAX_LOOKUPS_PER_IP, LOOKUP_WINDOW_MS))) throw tooMany;
+  if (await isLimited(codeKey, MAX_LOOKUP_FAILS_PER_CODE)) throw tooMany;
+
   await releaseExpired();
   const appt = await prisma.appointment.findUnique({
-    where: { code: code.trim().toUpperCase() },
+    where: { code: normalizedCode },
     select: { accessToken: true, clientPhone: true },
   });
   // Mismo error si no existe o si el teléfono no coincide, para no revelar códigos válidos.
   if (!appt || appt.clientPhone !== normalizePhone(phone)) {
+    await consume(codeKey, MAX_LOOKUP_FAILS_PER_CODE, LOOKUP_WINDOW_MS);
     throw new BookingError(404, "No encontramos un turno con ese código y teléfono");
   }
   return appt.accessToken;
@@ -280,17 +320,15 @@ export async function adminConfirm(id: string) {
 
 export async function adminReject(id: string) {
   await releaseExpired();
-  const appt = await prisma.appointment.findUnique({ where: { id } });
-  if (!appt || appt.status !== "PENDIENTE_WHATSAPP") throw new BookingError(409, "El turno ya no está pendiente");
-  await cancel(id, "RECHAZADO");
+  if (!(await cancel(id, "RECHAZADO", ["PENDIENTE_WHATSAPP"]))) {
+    throw new BookingError(409, "El turno ya no está pendiente");
+  }
 }
 
 export async function adminCancel(id: string) {
   await releaseExpired();
-  const appt = await prisma.appointment.findUnique({ where: { id } });
-  if (!appt || !ACTIVE_STATUSES.includes(appt.status)) throw new BookingError(409, "El turno ya está cancelado");
-  // TODO(Mercado Pago): permitir reembolso total o del 50% según lo acordado con el cliente.
-  await cancel(id, "BARBERO");
+  // TODO(Mercado Pago): si el turno está pago, ofrecer el reembolso total.
+  if (!(await cancel(id, "BARBERO", ACTIVE_STATUSES))) throw new BookingError(409, "El turno ya está cancelado");
 }
 
 export async function createBlock(dateKey: string, from: string, to: string, reason?: string) {
@@ -303,6 +341,12 @@ export async function createBlock(dateKey: string, from: string, to: string, rea
   const startsAt = zonedInstant(dateKey, from);
   const endsAt = zonedInstant(dateKey, to);
   if (endsAt <= startsAt) throw new BookingError(400, "La hora de fin tiene que ser posterior a la de inicio");
+  if (minutesOf(from) < minutesOf(settings.openingTime) || minutesOf(to) > minutesOf(settings.closingTime)) {
+    throw new BookingError(
+      400,
+      `El bloqueo tiene que estar dentro del horario de atención (${settings.openingTime} a ${settings.closingTime})`,
+    );
+  }
 
   await releaseExpired();
   try {
@@ -311,7 +355,7 @@ export async function createBlock(dateKey: string, from: string, to: string, rea
         startsAt,
         endsAt,
         reason: reason?.trim() || null,
-        slotLocks: { create: unitStarts(startsAt, endsAt, unit).map((u) => ({ startsAt: u })) },
+        slotLocks: { create: lockRows(startsAt, endsAt) },
       },
     });
   } catch (e) {
@@ -352,7 +396,7 @@ export async function getAgenda(dateKey: string) {
       orderBy: { startsAt: "asc" },
     }),
     prisma.appointment.findMany({
-      where: { status: "PENDIENTE_WHATSAPP" },
+      where: { status: "PENDIENTE_WHATSAPP", endsAt: { gt: new Date() } },
       include: { service: true },
       orderBy: { startsAt: "asc" },
     }),

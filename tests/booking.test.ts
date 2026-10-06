@@ -11,13 +11,15 @@ import {
   deleteBlock,
   getAppointmentByToken,
   getAvailability,
+  LOCK_UNIT_MIN,
   lookupAppointment,
   markClientNotified,
   releaseExpired,
   type CreateAppointmentInput,
 } from "@/lib/booking";
 import { getSettings, prisma } from "@/lib/db";
-import { zonedInstant } from "@/lib/time";
+import { updateSettings } from "@/lib/admin-config";
+import { isDateKey, zonedInstant } from "@/lib/time";
 
 // Lunes 5/10/2026 a las 08:00 en Argentina (UTC-3). La barbería abre lunes a sábado de 09 a 20.
 const LUNES = "2026-10-05";
@@ -26,8 +28,9 @@ const DOMINGO = "2026-10-11";
 const AHORA = zonedInstant(LUNES, "08:00");
 const MIN = 60_000;
 
-let corte: number; // 30 min = 1 unidad
-let combo: number; // 60 min = 2 unidades
+let corte: number; // 30 min = 1 unidad de agenda
+let combo: number; // 60 min = 2 unidades de agenda
+const LOCKS_COMBO = 60 / LOCK_UNIT_MIN; // SlotLock de 5 minutos que ocupa un combo
 let n = 0;
 
 function setNow(date: Date) {
@@ -78,6 +81,8 @@ beforeEach(async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   setNow(AHORA);
   await prisma.slotLock.deleteMany();
+  await prisma.phoneHold.deleteMany();
+  await prisma.rateLimit.deleteMany();
   await prisma.appointment.deleteMany();
   await prisma.blockedSlot.deleteMany();
   await prisma.service.deleteMany();
@@ -118,10 +123,9 @@ describe("días y disponibilidad", () => {
     expect(appt.endsAt.getTime() - appt.startsAt.getTime()).toBe(60 * MIN);
     expect(appt.startsAt).toEqual(new Date("2026-10-07T13:00:00Z")); // 10:00 en Argentina
     const locks = await locksOf(appt.id);
-    expect(locks.map((l) => l.startsAt)).toEqual([
-      new Date("2026-10-07T13:00:00Z"),
-      new Date("2026-10-07T13:30:00Z"),
-    ]);
+    expect(locks).toHaveLength(LOCKS_COMBO);
+    expect(locks[0].startsAt).toEqual(new Date("2026-10-07T13:00:00Z"));
+    expect(locks.at(-1)!.startsAt).toEqual(new Date("2026-10-07T13:55:00Z"));
 
     const combos = await slotsOf(MIERCOLES, combo);
     expect(combos).toMatchObject({ "09:00": true, "09:30": false, "10:00": false, "10:30": false, "11:00": true });
@@ -197,7 +201,7 @@ describe("vencimiento de reservas en efectivo", () => {
     advance(14);
     await releaseExpired();
     expect((await prisma.appointment.findUniqueOrThrow({ where: { id: appt.id } })).status).toBe("PENDIENTE_WHATSAPP");
-    expect(await locksOf(appt.id)).toHaveLength(2);
+    expect(await locksOf(appt.id)).toHaveLength(LOCKS_COMBO);
 
     advance(2);
     await releaseExpired();
@@ -222,10 +226,10 @@ describe("vencimiento de reservas en efectivo", () => {
     advance(6);
     await releaseExpired();
     expect(await locksOf(vence.id)).toHaveLength(0);
-    expect(await locksOf(sigue.id)).toHaveLength(2);
+    expect(await locksOf(sigue.id)).toHaveLength(LOCKS_COMBO);
   });
 
-  it("markClientNotified evita el vencimiento", async () => {
+  it("markClientNotified extiende el vencimiento (no lo anula)", async () => {
     const appt = await book({ time: "10:00" });
     advance(5);
     await markClientNotified(appt.accessToken);
@@ -234,11 +238,31 @@ describe("vencimiento de reservas en efectivo", () => {
     const sigue = await prisma.appointment.findUniqueOrThrow({ where: { id: appt.id } });
     expect(sigue.status).toBe("PENDIENTE_WHATSAPP");
     expect(sigue.clientNotifiedAt).not.toBeNull();
-    expect(await locksOf(appt.id)).toHaveLength(2);
+    expect(await locksOf(appt.id)).toHaveLength(LOCKS_COMBO);
     // Ya avisó: no se puede marcar de nuevo.
     await expectBookingError(markClientNotified(appt.accessToken), 409);
     // Y el barbero todavía lo puede confirmar.
     await adminConfirm(appt.id);
+  });
+
+  it("si el barbero no confirma, vence a las 12 horas del aviso y libera el horario y el celular", async () => {
+    const appt = await book({ time: "10:00", clientPhone: "11 5555-0000" });
+    await markClientNotified(appt.accessToken);
+    advance(12 * 60 - 1);
+    await releaseExpired();
+    expect((await getAppointmentByToken(appt.accessToken))?.status).toBe("PENDIENTE_WHATSAPP");
+    advance(2);
+    expect((await getAppointmentByToken(appt.accessToken))?.status).toBe("CANCELADO");
+    expect(await locksOf(appt.id)).toHaveLength(0);
+    await expect(book({ time: "10:00", clientPhone: "11 5555-0000" })).resolves.toBeTruthy();
+  });
+
+  it("el aviso no retiene el horario más allá del inicio del turno", async () => {
+    setNow(zonedInstant(MIERCOLES, "08:00"));
+    const appt = await book({ time: "10:00" });
+    await markClientNotified(appt.accessToken);
+    const { expiresAt } = await prisma.appointment.findUniqueOrThrow({ where: { id: appt.id } });
+    expect(expiresAt).toEqual(appt.startsAt);
   });
 
   it("markClientNotified falla si el turno ya venció", async () => {
@@ -263,7 +287,7 @@ describe("cancelación del cliente", () => {
     const appt = await book({ date: LUNES, time: "18:00" });
     await expectBookingError(cancelByClient(appt.accessToken), 400);
     expect((await prisma.appointment.findUniqueOrThrow({ where: { id: appt.id } })).status).toBe("PENDIENTE_WHATSAPP");
-    expect(await locksOf(appt.id)).toHaveLength(2);
+    expect(await locksOf(appt.id)).toHaveLength(LOCKS_COMBO);
   });
 
   it("el límite de 24 h se cuenta desde ahora", async () => {
@@ -279,17 +303,32 @@ describe("cancelación del cliente", () => {
 });
 
 describe("lookupAppointment", () => {
+  const IP = "190.0.0.1";
+
   it("encuentra el turno con el código en minúsculas y el celular en otro formato", async () => {
     const appt = await book({ clientPhone: "11 2345-6789" });
-    await expect(lookupAppointment(`  ${appt.code.toLowerCase()} `, "+54 9 11 2345 6789")).resolves.toBe(appt.accessToken);
-    await expect(lookupAppointment(appt.code, "011 15 2345 6789")).resolves.toBe(appt.accessToken);
+    await expect(lookupAppointment(`  ${appt.code.toLowerCase()} `, "+54 9 11 2345 6789", IP)).resolves.toBe(appt.accessToken);
+    await expect(lookupAppointment(appt.code, "011 15 2345 6789", IP)).resolves.toBe(appt.accessToken);
   });
 
   it("mismo 404 si el código no existe o el celular no coincide", async () => {
     const appt = await book({ clientPhone: "11 2345-6789" });
-    await expectBookingError(lookupAppointment(appt.code, "11 9999-9999"), 404);
-    await expectBookingError(lookupAppointment(appt.code, "123"), 404);
-    await expectBookingError(lookupAppointment("TURN-XXXXXX", "11 2345-6789"), 404);
+    await expectBookingError(lookupAppointment(appt.code, "11 9999-9999", IP), 404);
+    await expectBookingError(lookupAppointment(appt.code, "123", IP), 404);
+    await expectBookingError(lookupAppointment("TURN-XXXXXX", "11 2345-6789", IP), 404);
+  });
+
+  it("bloquea un código después de 5 fallos, aunque se cambie de IP", async () => {
+    const appt = await book({ clientPhone: "11 2345-6789" });
+    for (let i = 0; i < 5; i++) await expectBookingError(lookupAppointment(appt.code, `11 9999-000${i}`, `1.1.1.${i}`), 404);
+    await expectBookingError(lookupAppointment(appt.code, "11 2345-6789", "2.2.2.2"), 429);
+    advance(16);
+    await expect(lookupAppointment(appt.code, "11 2345-6789", "2.2.2.2")).resolves.toBe(appt.accessToken);
+  });
+
+  it("limita las búsquedas por IP", async () => {
+    for (let i = 0; i < 10; i++) await expectBookingError(lookupAppointment(`TURN-AAAAA${i}`, "11 2345-6789", IP), 404);
+    await expectBookingError(lookupAppointment("TURN-BBBBBB", "11 2345-6789", IP), 429);
   });
 });
 
@@ -303,7 +342,7 @@ describe("panel del barbero", () => {
     expect(confirmado.status).toBe("CONFIRMADO");
     expect(confirmado.expiresAt).toBeNull();
     expect(confirmado.confirmedAt).not.toBeNull();
-    expect(await locksOf(appt.id)).toHaveLength(2);
+    expect(await locksOf(appt.id)).toHaveLength(LOCKS_COMBO);
     await expectBookingError(adminConfirm(appt.id), 409);
   });
 
@@ -359,7 +398,7 @@ describe("bloqueos", () => {
     await createBlock(MIERCOLES, "12:00", "13:00", "  Almuerzo ");
     const block = await prisma.blockedSlot.findFirstOrThrow({ include: { slotLocks: true } });
     expect(block.reason).toBe("Almuerzo");
-    expect(block.slotLocks).toHaveLength(2);
+    expect(block.slotLocks).toHaveLength(LOCKS_COMBO);
     expect(await slotsOf(MIERCOLES, combo)).toMatchObject({ "11:00": true, "11:30": false, "12:00": false, "12:30": false, "13:00": true });
     await expectBookingError(book({ time: "12:30", serviceId: corte }), 409);
 
@@ -373,8 +412,8 @@ describe("bloqueos", () => {
     await expectBookingError(createBlock(MIERCOLES, "09:00", "11:00"), 409);
     await expectBookingError(createBlock(MIERCOLES, "10:30", "11:00"), 409);
     expect(await prisma.blockedSlot.count()).toBe(0);
-    expect(await prisma.slotLock.count()).toBe(2);
-    expect(await locksOf(appt.id)).toHaveLength(2);
+    expect(await prisma.slotLock.count()).toBe(LOCKS_COMBO);
+    expect(await locksOf(appt.id)).toHaveLength(LOCKS_COMBO);
   });
 
   it("un bloqueo que choca con otro bloqueo falla", async () => {
@@ -417,7 +456,7 @@ describe("concurrencia", () => {
     // Las dos pasan el chequeo de disponibilidad; la que pierde choca con la restricción única de SlotLock.
     expect(error.message).toMatch(/se acaba de ocupar/);
     expect(await prisma.appointment.count()).toBe(1);
-    expect(await prisma.slotLock.count()).toBe(2);
+    expect(await prisma.slotLock.count()).toBe(LOCKS_COMBO);
   });
 
   it("dos reservas simultáneas que se superponen en parte: solo una gana", async () => {
@@ -435,5 +474,55 @@ describe("concurrencia", () => {
     await expect(
       prisma.slotLock.create({ data: { startsAt: appt.startsAt } }),
     ).rejects.toMatchObject({ code: "P2002" });
+  });
+});
+
+describe("arreglos de la revisión de seguridad", () => {
+  it("cambiar la unidad de agenda no permite turnos superpuestos", async () => {
+    await book({ serviceId: corte, time: "10:00" }); // 10:00 a 10:30
+    const settings = await getSettings();
+    await updateSettings({
+      ...settings,
+      daysOpen: settings.daysOpen.split(",").map(Number),
+      slotDurationMin: 15,
+    });
+    const cortes = await slotsOf(MIERCOLES, corte);
+    expect(cortes).toMatchObject({ "09:30": true, "09:45": false, "10:00": false, "10:15": false, "10:30": true });
+    await expectBookingError(book({ serviceId: corte, time: "10:15" }), 409);
+  });
+
+  it("dos reservas simultáneas con el mismo celular: solo una gana", async () => {
+    const results = await Promise.allSettled([
+      book({ time: "10:00", clientPhone: "11 7777-0000" }),
+      book({ time: "15:00", clientPhone: "+54 9 11 7777 0000" }),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const failed = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
+    expect((failed.reason as BookingError).status).toBe(409);
+    expect(await prisma.appointment.count({ where: { status: { not: "CANCELADO" } } })).toBe(1);
+  });
+
+  it("un celular cuyo turno ya pasó puede volver a reservar", async () => {
+    await book({ time: "10:00", clientPhone: "11 6666-0000" }).then((a) => adminConfirm(a.id));
+    setNow(zonedInstant(MIERCOLES, "11:30"));
+    await expect(book({ date: "2026-10-08", time: "10:00", clientPhone: "11 6666-0000" })).resolves.toBeTruthy();
+  });
+
+  it("no se puede rechazar un turno que el barbero ya confirmó", async () => {
+    const appt = await book();
+    await adminConfirm(appt.id);
+    await expectBookingError(adminReject(appt.id), 409);
+    expect((await getAppointmentByToken(appt.accessToken))?.status).toBe("CONFIRMADO");
+  });
+
+  it("los bloqueos tienen que estar dentro del horario de atención", async () => {
+    await expectBookingError(createBlock(MIERCOLES, "08:00", "10:00"), 400);
+    await expectBookingError(createBlock(MIERCOLES, "19:00", "21:00"), 400);
+  });
+
+  it("rechaza fechas que no existen", () => {
+    expect(isDateKey("2026-02-31")).toBe(false);
+    expect(isDateKey("2026-13-01")).toBe(false);
+    expect(isDateKey("2028-02-29")).toBe(true);
   });
 });

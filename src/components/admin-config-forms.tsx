@@ -236,8 +236,7 @@ export function SettingsForm({ settings }: { settings: SettingsValues }) {
       </div>
       <p className="text-xs text-muted">
         La unidad de agenda es el bloque mínimo de la grilla: los horarios y la duración de los servicios tienen que ser
-        múltiplos de ella. Si hay turnos o bloqueos a futuro, no se puede cambiar la unidad (ni correr la apertura fuera
-        de la grilla actual) hasta que pasen o se cancelen.
+        múltiplos de ella (y ella, múltiplo de 5 minutos). Cambiarla no afecta a los turnos ya reservados.
       </p>
 
       <FormMessage error={error} ok={ok} />
