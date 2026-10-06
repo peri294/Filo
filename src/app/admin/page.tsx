@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, MessageCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, MessageCircle, Settings } from "lucide-react";
 import { isAdmin } from "@/lib/admin-auth";
 import { ACTIVE_STATUSES, getAgenda, weekStartOf } from "@/lib/booking";
 import { CANCEL_REASON_LABEL, formatPrice, STATUS_LABEL, whatsappLink } from "@/lib/format";
@@ -66,7 +66,12 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-3xl uppercase">Panel</h1>
-        <LogoutButton />
+        <div className="flex items-center gap-2">
+          <Link href="/admin/configuracion" className="btn-ghost px-3 py-2 text-sm">
+            <Settings className="size-4" aria-hidden /> Configuración
+          </Link>
+          <LogoutButton />
+        </div>
       </div>
 
       {pending.length > 0 && (

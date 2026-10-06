@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Lock, LogOut } from "lucide-react";
 
-async function request(url: string, method = "POST", body?: unknown) {
+/** Llama a la API del panel. Devuelve el mensaje de error, o null si salió bien. */
+export async function request(url: string, method = "POST", body?: unknown) {
   const res = await fetch(url, {
     method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
