@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarCheck, Scissors } from "lucide-react";
+import { ListChecks, Scissors } from "lucide-react";
 import { StatusScreen } from "@/components/status-screen";
 
 export const metadata: Metadata = {
@@ -16,8 +16,8 @@ export default function NotFound() {
       title="Esta página no existe"
       actions={
         <>
-          <Link href="/reservar" className="btn-primary">
-            <CalendarCheck className="size-5" aria-hidden /> Reservar turno
+          <Link href="/cuenta" className="btn-primary">
+            <ListChecks className="size-5" aria-hidden /> Mis turnos
           </Link>
           <Link href="/" className="btn-ghost">
             Ir al inicio

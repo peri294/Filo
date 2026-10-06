@@ -1,16 +1,13 @@
 import { ImageResponse } from "next/og";
-import { connection } from "next/server";
-import { getSettings } from "@/lib/db";
+import { BRAND_NAME } from "@/lib/brand";
 
 // Imagen que muestran WhatsApp, Instagram, etc. al compartir un link del sitio.
-export const alt = "Turnos online de la barbería";
+export const alt = "Turnos online para barberías";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function OpengraphImage() {
-  // El nombre se puede cambiar en la base: se lee en cada request, no en el build.
-  await connection();
-  const { salonName } = await getSettings();
+  const salonName = BRAND_NAME;
 
   return new ImageResponse(
     (

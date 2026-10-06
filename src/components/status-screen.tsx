@@ -12,7 +12,7 @@ export function StatusScreen({
   eyebrow: string;
   title: string;
   children: React.ReactNode;
-  actions: React.ReactNode;
+  actions?: React.ReactNode;
 }) {
   return (
     <div className="mx-auto max-w-md py-8 text-center">
@@ -22,7 +22,7 @@ export function StatusScreen({
       <p className="mt-5 text-sm tracking-[0.3em] text-brass uppercase">{eyebrow}</p>
       <h1 className="mt-2 font-display text-3xl uppercase">{title}</h1>
       <div className="mt-3 space-y-2 text-muted">{children}</div>
-      <div className="mt-6 flex flex-col gap-3">{actions}</div>
+      {actions && <div className="mt-6 flex flex-col gap-3">{actions}</div>}
     </div>
   );
 }

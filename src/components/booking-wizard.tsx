@@ -2,13 +2,17 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, Check, CreditCard, Loader2, Pencil, RotateCcw } from "lucide-react";
-import { formatPrice, normalizePhone } from "@/lib/format";
+import { Banknote, Check, CreditCard, Loader2, Pencil, RotateCcw, Shuffle } from "lucide-react";
+import { formatPrice } from "@/lib/format";
 
 type Service = { id: number; name: string; price: number; durationMin: number };
 type DateOption = { key: string; label: string; longLabel: string };
 type Slot = { time: string; available: boolean };
-type StepId = "paso-servicio" | "paso-dia" | "paso-horario" | "paso-datos" | "paso-confirmar";
+type Barber = { id: string; name: string };
+type StepId = "paso-servicio" | "paso-barbero" | "paso-dia" | "paso-horario" | "paso-confirmar";
+
+/** "El primero disponible" (mismo valor que ANY_BARBER en src/lib/booking.ts). */
+const ANY = "any";
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
@@ -30,15 +34,6 @@ function scrollToStep(id: StepId) {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
   });
-}
-
-function nameError(name: string) {
-  return name.trim().length < 2 ? "Escribí tu nombre." : null;
-}
-
-function phoneError(phone: string) {
-  if (!phone.trim()) return "Escribí tu WhatsApp.";
-  return normalizePhone(phone) ? null : "Revisá el número: tiene que tener código de área, por ejemplo 11 2345 6789.";
 }
 
 function Step({
@@ -104,39 +99,46 @@ function SummaryRow({
 }
 
 export function BookingWizard({
+  slug,
   services,
+  barbers,
   dates,
   initialServiceId,
+  client,
 }: {
+  slug: string;
   services: Service[];
+  barbers: Barber[];
   dates: DateOption[];
   initialServiceId: number | null;
+  client: { name: string; phone: string };
 }) {
   const router = useRouter();
   const [serviceId, setServiceId] = useState<number | null>(initialServiceId);
   // Si el servicio vino elegido desde el inicio, lo mostramos resumido con opción de cambiarlo.
   const [showServiceList, setShowServiceList] = useState(initialServiceId === null);
+  const [barberId, setBarberId] = useState(ANY);
   const [date, setDate] = useState<string | null>(null);
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState(false);
   const [time, setTime] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [touched, setTouched] = useState({ name: false, phone: false });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
-  const nameRef = useRef<HTMLInputElement>(null);
-  const phoneRef = useRef<HTMLInputElement>(null);
   const firstServiceRef = useRef<HTMLButtonElement>(null);
 
   const service = services.find((s) => s.id === serviceId);
   const dateOption = dates.find((d) => d.key === date);
-  const nameErr = touched.name ? nameError(name) : null;
-  const phoneErr = touched.phone ? phoneError(phone) : null;
+  const barber = barbers.find((b) => b.id === barberId);
+  // Con un solo barbero no hace falta elegir: el paso no se muestra.
+  const showBarbers = barbers.length > 1;
+  const stepN = (step: StepId) =>
+    (["paso-servicio", "paso-barbero", "paso-dia", "paso-horario", "paso-confirmar"] as StepId[])
+      .filter((id) => showBarbers || id !== "paso-barbero")
+      .indexOf(step) + 1;
 
-  async function loadSlots(nextServiceId: number | null, nextDate: string | null) {
+  async function loadSlots(nextServiceId: number | null, nextDate: string | null, nextBarber = barberId) {
     setTime(null);
     setSlots(null);
     setSlotsError(false);
@@ -144,7 +146,8 @@ export function BookingWizard({
     const id = ++requestId.current;
     setSlotsLoading(true);
     try {
-      const res = await fetch(`/api/availability?date=${nextDate}&serviceId=${nextServiceId}`);
+      const params = new URLSearchParams({ date: nextDate, serviceId: String(nextServiceId), barberId: nextBarber });
+      const res = await fetch(`/api/${slug}/availability?${params}`);
       const data = await res.json();
       if (id !== requestId.current) return; // llegó una respuesta vieja
       if (res.ok) setSlots(data.slots);
@@ -159,6 +162,12 @@ export function BookingWizard({
   function chooseService(id: number) {
     setServiceId(id);
     loadSlots(id, date);
+    scrollToStep(date ? "paso-horario" : showBarbers ? "paso-barbero" : "paso-dia");
+  }
+
+  function chooseBarber(id: string) {
+    setBarberId(id);
+    loadSlots(serviceId, date, id);
     scrollToStep(date ? "paso-horario" : "paso-dia");
   }
 
@@ -170,7 +179,7 @@ export function BookingWizard({
 
   function chooseTime(t: string) {
     setTime(t);
-    scrollToStep("paso-datos");
+    scrollToStep("paso-confirmar");
   }
 
   function openServiceList() {
@@ -181,28 +190,28 @@ export function BookingWizard({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!serviceId || !date || !time) return;
-    setTouched({ name: true, phone: true });
-    if (nameError(name)) return nameRef.current?.focus();
-    if (phoneError(phone)) return phoneRef.current?.focus();
 
     setSubmitting(true);
     setError(null);
     try {
-      const { token } = await postJson("/api/appointments", {
+      const { token } = await postJson(`/api/${slug}/appointments`, {
         serviceId,
         date,
         time,
-        clientName: name.trim(),
-        clientPhone: phone,
+        barberId,
         paymentMethod: "EFECTIVO",
       });
-      router.push(`/turno/${token}?nueva=1`);
+      router.push(`/${slug}/turno/${token}?nueva=1`);
       // No liberamos el botón: queda "Reservando…" hasta que carga el comprobante.
     } catch (err) {
       const e = err as Error & { status?: number };
       setError(
         e.status ? e.message : "No pudimos conectarnos. Revisá tu conexión y probá de nuevo.",
       );
+      if (e.status === 401) {
+        router.push(`/cuenta/ingresar?volver=${encodeURIComponent(`/${slug}/reservar`)}`);
+        return;
+      }
       if (e.status === 409) {
         loadSlots(serviceId, date);
         scrollToStep("paso-horario");
@@ -216,7 +225,7 @@ export function BookingWizard({
 
   return (
     <form onSubmit={submit} noValidate className="space-y-4">
-      <Step id="paso-servicio" n={1} title="Elegí el servicio" done={!!service}>
+      <Step id="paso-servicio" n={stepN("paso-servicio")} title="Elegí el servicio" done={!!service}>
         {!showServiceList && service ? (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brass bg-brass/10 p-3">
             <div className="min-w-0">
@@ -260,7 +269,35 @@ export function BookingWizard({
         )}
       </Step>
 
-      <Step id="paso-dia" n={2} title="Elegí el día" done={!!date}>
+      {showBarbers && (
+        <Step id="paso-barbero" n={stepN("paso-barbero")} title="Elegí con quién" done>
+          <div role="group" aria-labelledby="paso-barbero-titulo" className="grid gap-2 sm:grid-cols-2">
+            {[{ id: ANY, name: "El primero disponible" }, ...barbers].map((b) => {
+              const selected = b.id === barberId;
+              return (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => chooseBarber(b.id)}
+                  aria-pressed={selected}
+                  className={`flex items-center justify-between gap-3 rounded-xl border p-3 text-left transition ${
+                    selected ? "border-brass bg-brass/10" : "border-line hover:border-muted"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 font-medium">
+                    {b.id === ANY && <Shuffle className="size-4 text-brass" aria-hidden />}
+                    {b.name}
+                  </span>
+                  {selected && <Check className="size-5 shrink-0 text-brass" aria-hidden />}
+                </button>
+              );
+            })}
+          </div>
+          <p className="hint">Con &quot;El primero disponible&quot; ves los horarios de todos y te asignamos a quien esté libre.</p>
+        </Step>
+      )}
+
+      <Step id="paso-dia" n={stepN("paso-dia")} title="Elegí el día" done={!!date}>
         <div
           role="group"
           aria-labelledby="paso-dia-titulo"
@@ -297,7 +334,7 @@ export function BookingWizard({
         </p>
       </Step>
 
-      <Step id="paso-horario" n={3} title="Elegí el horario" done={!!time}>
+      <Step id="paso-horario" n={stepN("paso-horario")} title="Elegí el horario" done={!!time}>
         <div aria-live="polite" className="text-sm text-muted empty:hidden">
           {!serviceId || !date ? (
             <p>Primero elegí {!serviceId ? "el servicio" : "el día"}.</p>
@@ -350,69 +387,7 @@ export function BookingWizard({
         )}
       </Step>
 
-      <Step id="paso-datos" n={4} title="Tus datos" done={!nameError(name) && !phoneError(phone)}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="name" className="label">
-              Nombre
-            </label>
-            <input
-              ref={nameRef}
-              id="name"
-              name="name"
-              className="input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={() => setTouched((t) => ({ ...t, name: true }))}
-              autoComplete="name"
-              autoCapitalize="words"
-              enterKeyHint="next"
-              required
-              minLength={2}
-              maxLength={60}
-              aria-invalid={nameErr ? true : undefined}
-              aria-describedby={nameErr ? "name-error" : undefined}
-            />
-            {nameErr && (
-              <p id="name-error" className="field-error">
-                {nameErr}
-              </p>
-            )}
-          </div>
-          <div>
-            <label htmlFor="phone" className="label">
-              WhatsApp
-            </label>
-            <input
-              ref={phoneRef}
-              id="phone"
-              name="phone"
-              className="input"
-              type="tel"
-              inputMode="tel"
-              placeholder="11 2345 6789"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
-              autoComplete="tel"
-              enterKeyHint="done"
-              required
-              aria-invalid={phoneErr ? true : undefined}
-              aria-describedby={phoneErr ? "phone-error phone-hint" : "phone-hint"}
-            />
-            <p id="phone-hint" className="hint">
-              Con código de área. Por acá te confirmamos el turno.
-            </p>
-            {phoneErr && (
-              <p id="phone-error" className="field-error">
-                {phoneErr}
-              </p>
-            )}
-          </div>
-        </div>
-      </Step>
-
-      <Step id="paso-confirmar" n={5} title="Revisá y confirmá" done={false}>
+      <Step id="paso-confirmar" n={stepN("paso-confirmar")} title="Revisá y confirmá" done={false}>
         <dl className="text-sm">
           <SummaryRow
             label="Servicio"
@@ -420,6 +395,12 @@ export function BookingWizard({
             missing={service ? undefined : "Elegir servicio"}
             onFix={() => scrollToStep("paso-servicio")}
           />
+          {showBarbers && (
+            <SummaryRow
+              label="Con"
+              value={barber?.name ?? "El primero disponible"}
+            />
+          )}
           <SummaryRow
             label="Día"
             value={<span className="first-letter:uppercase">{dateOption?.longLabel}</span>}
@@ -432,18 +413,8 @@ export function BookingWizard({
             missing={time ? undefined : "Elegir horario"}
             onFix={() => scrollToStep("paso-horario")}
           />
-          <SummaryRow
-            label="A nombre de"
-            value={name.trim()}
-            missing={name.trim() ? undefined : "Completar nombre"}
-            onFix={() => nameRef.current?.focus()}
-          />
-          <SummaryRow
-            label="WhatsApp"
-            value={phone.trim()}
-            missing={phone.trim() ? undefined : "Completar WhatsApp"}
-            onFix={() => phoneRef.current?.focus()}
-          />
+          <SummaryRow label="A nombre de" value={client.name} />
+          <SummaryRow label="Celular" value={client.phone} />
           <SummaryRow label="Total" value={service ? formatPrice(service.price) : "—"} />
         </dl>
 

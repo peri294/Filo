@@ -2,14 +2,12 @@
 
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CopyCheck, Loader2, Pencil, Plus } from "lucide-react";
+import { Loader2, Pencil, Plus } from "lucide-react";
 import { ActionButton, request } from "@/components/admin-controls";
+import { WeekHoursFields, weekRowsFrom, weekRowsPayload } from "@/components/week-hours";
 import { formatPrice } from "@/lib/format";
-import { parseWeeklyHours, WEEK } from "@/lib/schedule";
 
-type DayRow = { open: boolean; from: string; to: string };
-
-function FormMessage({ error, ok }: { error: string | null; ok?: string | null }) {
+export function FormMessage({ error, ok }: { error: string | null; ok?: string | null }) {
   if (error) {
     return (
       <p role="alert" className="text-sm text-bad">
@@ -28,9 +26,9 @@ function FormMessage({ error, ok }: { error: string | null; ok?: string | null }
 }
 
 export type SettingsValues = {
-  salonName: string;
-  salonAddress: string;
-  salonPhone: string;
+  name: string;
+  address: string;
+  whatsapp: string;
   weeklyHours: string;
   slotDurationMin: number;
   bookingWindowDays: number;
@@ -40,23 +38,14 @@ export type SettingsValues = {
 export function SettingsForm({ settings }: { settings: SettingsValues }) {
   const router = useRouter();
   const [form, setForm] = useState({
-    salonName: settings.salonName,
-    salonAddress: settings.salonAddress,
-    salonPhone: settings.salonPhone,
+    name: settings.name,
+    address: settings.address,
+    whatsapp: settings.whatsapp,
     slotDurationMin: String(settings.slotDurationMin),
     bookingWindowDays: String(settings.bookingWindowDays),
     minNoticeMin: String(settings.minNoticeMin),
   });
-  const [days, setDays] = useState<Record<number, DayRow>>(() => {
-    const hours = parseWeeklyHours(settings.weeklyHours);
-    const first = Object.values(hours)[0] ?? { open: "09:00", close: "20:00" };
-    return Object.fromEntries(
-      WEEK.map((d) => {
-        const h = hours[d.value];
-        return [d.value, { open: !!h, from: h?.open ?? first.open, to: h?.close ?? first.close }];
-      }),
-    );
-  });
+  const [days, setDays] = useState(() => weekRowsFrom(settings.weeklyHours));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -64,32 +53,14 @@ export function SettingsForm({ settings }: { settings: SettingsValues }) {
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  function updateDay(value: number, patch: Partial<DayRow>) {
-    setDays((prev) => ({ ...prev, [value]: { ...prev[value], ...patch } }));
-  }
-
-  /** Copia el horario de un día a todos los demás días abiertos. */
-  function copyToOpenDays(value: number) {
-    setDays((prev) => {
-      const { from, to } = prev[value];
-      return Object.fromEntries(
-        Object.entries(prev).map(([k, d]) => [k, d.open ? { ...d, from, to } : d]),
-      ) as Record<number, DayRow>;
-    });
-  }
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     setOk(null);
-    const err = await request("/api/admin/settings", "PUT", {
+    const err = await request("/api/panel/configuracion", "PUT", {
       ...form,
-      weeklyHours: WEEK.filter((d) => days[d.value].open).map((d) => ({
-        weekday: d.value,
-        open: days[d.value].from,
-        close: days[d.value].to,
-      })),
+      weeklyHours: weekRowsPayload(days),
       slotDurationMin: Number(form.slotDurationMin),
       bookingWindowDays: Number(form.bookingWindowDays),
       minNoticeMin: Number(form.minNoticeMin),
@@ -111,94 +82,37 @@ export function SettingsForm({ settings }: { settings: SettingsValues }) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label htmlFor="salonName" className="label">Nombre</label>
-          <input id="salonName" className="input" value={form.salonName} onChange={set("salonName")} maxLength={80} required />
+          <label htmlFor="name" className="label">Nombre</label>
+          <input id="name" className="input" value={form.name} onChange={set("name")} maxLength={80} required />
         </div>
         <div className="sm:col-span-2">
-          <label htmlFor="salonAddress" className="label">Dirección</label>
+          <label htmlFor="address" className="label">Dirección</label>
           <input
-            id="salonAddress"
+            id="address"
             className="input"
-            value={form.salonAddress}
-            onChange={set("salonAddress")}
+            value={form.address}
+            onChange={set("address")}
             maxLength={160}
             placeholder="Av. Siempreviva 742, CABA"
           />
         </div>
         <div className="sm:col-span-2">
-          <label htmlFor="salonPhone" className="label">WhatsApp del barbero</label>
+          <label htmlFor="whatsapp" className="label">WhatsApp del local</label>
           <input
-            id="salonPhone"
+            id="whatsapp"
             className="input"
             type="tel"
             inputMode="tel"
-            value={form.salonPhone}
-            onChange={set("salonPhone")}
+            value={form.whatsapp}
+            onChange={set("whatsapp")}
             placeholder="11 2345 6789"
             required
           />
-          <p className="mt-1 text-xs text-muted">Con código de área. Se guarda en el formato de WhatsApp (549…).</p>
+          <p className="mt-1 text-xs text-muted">Recibe las confirmaciones de los turnos en efectivo. Con código de área.</p>
         </div>
       </div>
 
-      <fieldset className="space-y-2">
-        <legend className="label">Días y horarios de atención</legend>
-        {WEEK.map((d) => {
-          const day = days[d.value];
-          return (
-            <div
-              key={d.value}
-              className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2 ${
-                day.open ? "border-brass/60" : "border-line"
-              }`}
-            >
-              <label className="flex w-28 cursor-pointer items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-[var(--color-brass)]"
-                  checked={day.open}
-                  onChange={(e) => updateDay(d.value, { open: e.target.checked })}
-                />
-                <span className={day.open ? "text-ink" : "text-muted"}>{d.label}</span>
-              </label>
-              {day.open ? (
-                <div className="flex flex-1 items-center gap-2">
-                  <input
-                    type="time"
-                    className="input min-w-0 flex-1 px-3 py-2"
-                    step={unit * 60}
-                    value={day.from}
-                    onChange={(e) => updateDay(d.value, { from: e.target.value })}
-                    aria-label={`${d.label}: apertura`}
-                    required
-                  />
-                  <span className="text-sm text-muted">a</span>
-                  <input
-                    type="time"
-                    className="input min-w-0 flex-1 px-3 py-2"
-                    step={unit * 60}
-                    value={day.to}
-                    onChange={(e) => updateDay(d.value, { to: e.target.value })}
-                    aria-label={`${d.label}: cierre`}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="btn-ghost shrink-0 px-2.5 py-2"
-                    onClick={() => copyToOpenDays(d.value)}
-                    title="Copiar este horario a los demás días abiertos"
-                    aria-label={`Copiar el horario del ${d.label.toLowerCase()} a los demás días abiertos`}
-                  >
-                    <CopyCheck className="size-4" aria-hidden />
-                  </button>
-                </div>
-              ) : (
-                <span className="text-sm text-muted">Cerrado</span>
-              )}
-            </div>
-          );
-        })}
-      </fieldset>
+      <WeekHoursFields value={days} onChange={setDays} unit={unit} legend="Días y horarios de atención" idPrefix="local" />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
@@ -407,7 +321,7 @@ function ServiceItem({ service, unit }: { service: ServiceValues; unit: number }
           }}
           onCancel={() => setEditing(false)}
           onSubmit={async (d) => {
-            const err = await request(`/api/admin/services/${service.id}`, "PATCH", toPayload(d));
+            const err = await request(`/api/panel/servicios/${service.id}`, "PATCH", toPayload(d));
             if (!err) {
               setEditing(false);
               router.refresh();
@@ -439,7 +353,7 @@ function ServiceItem({ service, unit }: { service: ServiceValues; unit: number }
           <Pencil className="size-4" aria-hidden /> Editar
         </button>
         <ActionButton
-          url={`/api/admin/services/${service.id}`}
+          url={`/api/panel/servicios/${service.id}`}
           method="PATCH"
           body={{ active: !service.active }}
           className={service.active ? "btn-ghost px-3 py-2 text-sm" : "btn-primary px-3 py-2 text-sm"}
@@ -449,7 +363,7 @@ function ServiceItem({ service, unit }: { service: ServiceValues; unit: number }
         </ActionButton>
         {service.appointmentCount === 0 && (
           <ActionButton
-            url={`/api/admin/services/${service.id}`}
+            url={`/api/panel/servicios/${service.id}`}
             method="DELETE"
             className="btn-danger px-3 py-2 text-sm"
             confirmText="¿Borrar?"
@@ -489,7 +403,7 @@ export function ServicesEditor({ services, unit }: { services: ServiceValues[]; 
             initial={{ name: "", description: "", price: "", durationMin: String(unit), sortOrder: String(nextOrder) }}
             onCancel={() => setCreating(false)}
             onSubmit={async (d) => {
-              const err = await request("/api/admin/services", "POST", toPayload(d));
+              const err = await request("/api/panel/servicios", "POST", toPayload(d));
               if (!err) {
                 setCreating(false);
                 router.refresh();

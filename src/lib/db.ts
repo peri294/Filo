@@ -1,5 +1,5 @@
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient, type Tenant } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
@@ -11,8 +11,4 @@ export const prisma =
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
-export async function getSettings() {
-  return prisma.businessSetting.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
-}
-
-export type Settings = Awaited<ReturnType<typeof getSettings>>;
+export type { Tenant };

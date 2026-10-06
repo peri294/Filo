@@ -7,23 +7,122 @@ datasource db {
   provider = "sqlite"
 }
 
-// Configuración de la peluquería (una sola fila, id = 1)
-model BusinessSetting {
-  id                Int    @id @default(1)
-  salonName         String @default("Barbería")
-  salonAddress      String @default("")
-  salonPhone        String @default("5491100000000") // WhatsApp del barbero, sin + ni espacios
+// ---------- Barberías (inquilinos) ----------
+
+// Una barbería. Se identifica en la URL por su slug (turnos.com/<slug>); ver src/lib/tenant.ts.
+model Tenant {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  name              String
+  address           String   @default("")
+  whatsapp          String // WhatsApp del local (549 + 10 dígitos): recibe las confirmaciones en efectivo
   // Horario por día de la semana (0 = domingo ... 6 = sábado), en hora de Argentina.
   // JSON: {"1": ["09:00", "20:00"], ...}. Un día que no figura está cerrado. Ver src/lib/schedule.ts.
-  weeklyHours       String @default("{\"1\":[\"09:00\",\"20:00\"],\"2\":[\"09:00\",\"20:00\"],\"3\":[\"09:00\",\"20:00\"],\"4\":[\"09:00\",\"20:00\"],\"5\":[\"09:00\",\"20:00\"],\"6\":[\"09:00\",\"20:00\"]}")
-  slotDurationMin   Int    @default(30) // Unidad mínima de la agenda
-  bookingWindowDays Int    @default(30) // Cuántos días hacia adelante se puede reservar
-  minNoticeMin      Int    @default(30) // Anticipación mínima para reservar
+  weeklyHours       String   @default("{\"1\":[\"09:00\",\"20:00\"],\"2\":[\"09:00\",\"20:00\"],\"3\":[\"09:00\",\"20:00\"],\"4\":[\"09:00\",\"20:00\"],\"5\":[\"09:00\",\"20:00\"],\"6\":[\"09:00\",\"20:00\"]}")
+  slotDurationMin   Int      @default(30) // Unidad mínima de la agenda
+  bookingWindowDays Int      @default(30) // Cuántos días hacia adelante se puede reservar
+  minNoticeMin      Int      @default(30) // Anticipación mínima para reservar
+  active            Boolean  @default(true) // Suspendida: no recibe reservas y su panel queda bloqueado
+  createdAt         DateTime @default(now())
+
+  barbers      Barber[]
+  staff        StaffUser[]
+  services     Service[]
+  appointments Appointment[]
+  blockedSlots BlockedSlot[]
+  clientHolds  ClientHold[]
 }
 
-// Servicios (Corte, Barba, Combo, etc.)
+// Un barbero con agenda propia dentro de una barbería.
+model Barber {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  weeklyHours String? // Mismo formato que Tenant.weeklyHours; null = el horario del local
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true) // Desactivado: no recibe reservas nuevas; sus turnos quedan
+  createdAt   DateTime @default(now())
+
+  user         StaffUser?
+  appointments Appointment[]
+  blockedSlots BlockedSlot[]
+  slotLocks    SlotLock[]
+
+  @@index([tenantId])
+}
+
+// ---------- Personas ----------
+
+// Personal: superadmin (dueño del sistema), admin de una barbería y barberos.
+model StaffUser {
+  id           String    @id @default(cuid())
+  phone        String    @unique // 549 + 10 dígitos (normalizePhone)
+  passwordHash String
+  name         String
+  role         String // "SUPERADMIN" | "ADMIN" | "BARBER"
+  tenantId     String? // null solo para el superadmin
+  tenant       Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  barberId     String?   @unique // El admin también puede atender: entonces tiene agenda
+  barber       Barber?   @relation(fields: [barberId], references: [id], onDelete: SetNull)
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+
+  @@index([tenantId])
+}
+
+// Clientes: una cuenta sirve para todas las barberías. Separada de StaffUser para que
+// un mismo celular pueda ser barbero en un lado y cliente en otro.
+model Client {
+  id              String        @id @default(cuid())
+  phone           String        @unique // 549 + 10 dígitos, verificado por SMS
+  phoneVerifiedAt DateTime
+  passwordHash    String
+  name            String
+  acceptedTermsAt DateTime
+  createdAt       DateTime      @default(now())
+  sessions        Session[]
+  appointments    Appointment[]
+  holds           ClientHold[]
+}
+
+// Sesiones (cookie con id aleatorio; acá se guarda su hash). Una para el panel y otra para clientes.
+model Session {
+  idHash      String     @id
+  kind        String // "STAFF" | "CLIENT"
+  staffUserId String?
+  staffUser   StaffUser? @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  clientId    String?
+  client      Client?    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  createdAt   DateTime   @default(now())
+
+  @@index([staffUserId])
+  @@index([clientId])
+}
+
+// Códigos de verificación por SMS (registro y recuperación de contraseña). Ver src/lib/otp.ts.
+model OtpCode {
+  id        String    @id @default(cuid())
+  phone     String
+  purpose   String // "SIGNUP" | "RESET_CLIENT" | "RESET_STAFF"
+  codeHash  String
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([phone, purpose])
+}
+
+// ---------- Agenda ----------
+
+// Servicios de cada barbería (Corte, Barba, Combo, etc.). Todos los barberos hacen todos.
 model Service {
   id           Int           @id @default(autoincrement())
+  tenantId     String
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name         String
   description  String?
   price        Int // Pesos argentinos, sin decimales
@@ -31,17 +130,25 @@ model Service {
   sortOrder    Int           @default(0)
   active       Boolean       @default(true)
   appointments Appointment[]
+
+  @@index([tenantId])
 }
 
 // Turnos / Reservas
 model Appointment {
   id               String    @id @default(cuid())
+  tenantId         String
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  barberId         String
+  barber           Barber    @relation(fields: [barberId], references: [id])
+  clientId         String
+  client           Client    @relation(fields: [clientId], references: [id])
   code             String    @unique // Código corto para mostrar y para WhatsApp, ej: TURN-K7P2QX
-  accessToken      String    @unique // Token largo del link del comprobante (/turno/[token])
+  accessToken      String    @unique // Token largo del link del comprobante
   startsAt         DateTime
   endsAt           DateTime
-  clientName       String
-  clientPhone      String // Normalizado: solo dígitos
+  clientName       String // Foto de los datos del cliente al reservar
+  clientPhone      String
   clientIp         String
   serviceId        Int
   service          Service   @relation(fields: [serviceId], references: [id])
@@ -49,10 +156,11 @@ model Appointment {
   paymentMethod    String // "EFECTIVO" | "MERCADOPAGO"
   status           String // "PENDIENTE_WHATSAPP" | "PENDIENTE_PAGO" | "CONFIRMADO" | "CANCELADO"
   expiresAt        DateTime? // Vencimiento de la reserva provisoria
-  clientNotifiedAt DateTime? // El cliente avisó que mandó el WhatsApp: ya no vence sola, decide el barbero
+  clientNotifiedAt DateTime? // El cliente avisó que mandó el WhatsApp: el vencimiento se extiende
   confirmedAt      DateTime?
   cancelledAt      DateTime?
   cancelReason     String? // "EXPIRADO" | "CLIENTE" | "BARBERO" | "RECHAZADO"
+  attendance       String? // "ASISTIO" | "NO_VINO" (lo marca el barbero; base de las métricas)
 
   // Mercado Pago (se completa en la etapa de integración)
   pricePaid      Int?
@@ -62,56 +170,64 @@ model Appointment {
   refundAmount   Int?
   refundId       String?
 
-  createdAt DateTime   @default(now())
-  slotLocks SlotLock[]
-  phoneHold PhoneHold?
+  createdAt  DateTime    @default(now())
+  slotLocks  SlotLock[]
+  clientHold ClientHold?
 
-  @@index([startsAt])
-  @@index([clientPhone, status])
+  @@index([tenantId, startsAt])
+  @@index([barberId, startsAt])
+  @@index([clientId])
   @@index([clientIp, createdAt])
   @@index([status, expiresAt])
 }
 
-// Bloqueo manual de horarios desde el panel del barbero
+// Bloqueo manual de horarios de un barbero
 model BlockedSlot {
   id        String     @id @default(cuid())
+  tenantId  String
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  barberId  String
+  barber    Barber     @relation(fields: [barberId], references: [id], onDelete: Cascade)
   startsAt  DateTime
   endsAt    DateTime
   reason    String?
   createdAt DateTime   @default(now())
   slotLocks SlotLock[]
+
+  @@index([tenantId, startsAt])
 }
 
-// Una fila por cada bloque de 5 minutos ocupado (LOCK_UNIT_MIN en booking.ts, fijo e
-// independiente de la grilla configurada). La restricción única sobre startsAt hace que
-// la base de datos impida dos reservas en el mismo horario, aunque lleguen al mismo tiempo.
+// Una fila por cada bloque de 5 minutos ocupado de cada barbero (LOCK_UNIT_MIN en booking.ts,
+// fijo e independiente de la grilla). La clave (barberId, startsAt) hace que la base impida
+// dos reservas del mismo barbero en el mismo horario, aunque lleguen al mismo tiempo.
 model SlotLock {
-  startsAt      DateTime     @id
+  barberId      String
+  barber        Barber       @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  startsAt      DateTime
   appointmentId String?
   appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   blockedSlotId String?
   blockedSlot   BlockedSlot? @relation(fields: [blockedSlotId], references: [id], onDelete: Cascade)
 
+  @@id([barberId, startsAt])
   @@index([appointmentId])
   @@index([blockedSlotId])
 }
 
-// Un turno activo por celular, garantizado por la base (igual que SlotLock con los horarios).
+// Un turno activo por cliente en cada barbería, garantizado por la base.
 // Se borra al cancelar o vencer el turno; si el turno ya pasó, se limpia en la próxima reserva.
-model PhoneHold {
-  phone         String      @id
+model ClientHold {
+  tenantId      String
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
   appointmentId String      @unique
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, clientId])
 }
 
-// Sesiones del panel del barbero. La cookie lleva un id aleatorio; acá se guarda su hash.
-model AdminSession {
-  idHash    String   @id
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-}
-
-// Contadores para limitar intentos (login del panel, búsqueda de turnos).
+// Contadores para limitar intentos (logins, SMS, reservas).
 // Se guardan en la base para que funcionen con varias instancias en Vercel.
 model RateLimit {
   key     String   @id

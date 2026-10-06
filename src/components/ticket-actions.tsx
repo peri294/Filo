@@ -64,7 +64,7 @@ export function TicketActions({
     setBusy(action);
     setError(null);
     try {
-      const res = await fetch(`/api/appointments/${token}/${action}`, { method: "POST" });
+      const res = await fetch(`/api/cuenta/turnos/${token}/${action}`, { method: "POST" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError({ action, message: data.error ?? "Ocurrió un error. Probá de nuevo." });

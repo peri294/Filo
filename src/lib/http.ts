@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { BookingError } from "@/lib/booking";
-import { isAdmin } from "@/lib/admin-auth";
+import { requireClient, requireStaff, type CurrentClient, type CurrentStaff, type StaffRole } from "@/lib/auth";
+import { BookingError } from "@/lib/errors";
 
 /**
  * IP del cliente. En Vercel, `x-real-ip` lo pone la plataforma y no se puede falsificar.
@@ -49,7 +49,7 @@ export async function handle(fn: () => Promise<unknown>) {
   }
 }
 
-/** Para las rutas que dependen de la cookie del panel (incluidos login y logout). */
+/** Para rutas que crean o usan una sesión (login, registro, logout): solo desde el mismo sitio. */
 export async function handleSameSite(request: Request, fn: () => Promise<unknown>) {
   if (request.method !== "GET" && isCrossSite(request)) {
     return NextResponse.json({ error: "Origen no permitido" }, { status: 403 });
@@ -57,7 +57,18 @@ export async function handleSameSite(request: Request, fn: () => Promise<unknown
   return handle(fn);
 }
 
-export async function handleAdmin(request: Request, fn: () => Promise<unknown>) {
-  if (!(await isAdmin())) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  return handleSameSite(request, fn);
+/** Rutas del panel: personal logueado con alguno de los roles indicados. */
+export async function handleStaff(request: Request, roles: StaffRole[], fn: (user: CurrentStaff) => Promise<unknown>) {
+  return handleSameSite(request, async () => fn(await requireStaff(roles)));
+}
+
+/** Rutas de la cuenta del cliente. */
+export async function handleClient(request: Request, fn: (client: CurrentClient) => Promise<unknown>) {
+  return handleSameSite(request, async () => fn(await requireClient()));
+}
+
+/** Barbería del usuario del panel (el superadmin no tiene). */
+export function staffTenant(user: CurrentStaff) {
+  if (!user.tenant) throw new BookingError(403, "Tu usuario no pertenece a una barbería");
+  return user.tenant;
 }

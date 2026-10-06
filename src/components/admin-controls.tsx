@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Lock, LogOut } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 /** Llama a la API del panel. Devuelve el mensaje de error, o null si salió bien. */
 export async function request(url: string, method = "POST", body?: unknown) {
@@ -72,68 +72,20 @@ export function ActionButton({
   );
 }
 
-export function AdminLogin() {
+/** Bloquear un horario. `barbers` son los que el usuario puede bloquear; el admin además tiene "Todos". */
+export function BlockForm({
+  date,
+  times,
+  barbers,
+  allowAll,
+}: {
+  date: string;
+  times: string[];
+  barbers: { id: string; name: string }[];
+  allowAll: boolean;
+}) {
   const router = useRouter();
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(await request("/api/admin/login", "POST", { password }));
-    setBusy(false);
-    router.refresh();
-  }
-
-  return (
-    <form onSubmit={submit} className="card mx-auto max-w-sm space-y-4">
-      <h1 className="flex items-center gap-2 font-display text-2xl uppercase">
-        <Lock className="size-5 text-brass" aria-hidden /> Panel del barbero
-      </h1>
-      <div>
-        <label htmlFor="password" className="label">Clave</label>
-        <input
-          id="password"
-          type="password"
-          className="input"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          required
-        />
-      </div>
-      {error && (
-        <p role="alert" className="text-sm text-bad">
-          {error}
-        </p>
-      )}
-      <button type="submit" className="btn-primary w-full" disabled={busy}>
-        {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        Entrar
-      </button>
-    </form>
-  );
-}
-
-export function LogoutButton() {
-  const router = useRouter();
-  return (
-    <button
-      type="button"
-      className="btn-ghost px-3 py-2 text-sm"
-      onClick={async () => {
-        await request("/api/admin/logout");
-        router.refresh();
-      }}
-    >
-      <LogOut className="size-4" aria-hidden /> Salir
-    </button>
-  );
-}
-
-export function BlockForm({ date, times }: { date: string; times: string[] }) {
-  const router = useRouter();
+  const [barberId, setBarberId] = useState(allowAll ? "any" : (barbers[0]?.id ?? ""));
   const [from, setFrom] = useState(times[0]);
   const [to, setTo] = useState(times[times.length - 1]);
   const [reason, setReason] = useState("");
@@ -144,7 +96,7 @@ export function BlockForm({ date, times }: { date: string; times: string[] }) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const err = await request("/api/admin/blocks", "POST", { date, from, to, reason: reason || undefined });
+    const err = await request("/api/panel/bloqueos", "POST", { barberId, date, from, to, reason: reason || undefined });
     setBusy(false);
     if (err) {
       setError(err);
@@ -159,6 +111,19 @@ export function BlockForm({ date, times }: { date: string; times: string[] }) {
       <h2 className="font-semibold">Bloquear horario</h2>
       <p className="text-sm text-muted">Los horarios bloqueados no se pueden reservar desde la web.</p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {(allowAll || barbers.length > 1) && (
+          <div className="col-span-2 sm:col-span-4">
+            <label htmlFor="block-barber" className="label">Barbero</label>
+            <select id="block-barber" className="input" value={barberId} onChange={(e) => setBarberId(e.target.value)}>
+              {allowAll && <option value="any">Todos (cierra el local)</option>}
+              {barbers.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label htmlFor="from" className="label">Desde</label>
           <select id="from" className="input" value={from} onChange={(e) => setFrom(e.target.value)}>

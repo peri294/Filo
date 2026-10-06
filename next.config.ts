@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
-// El comprobante muestra datos del cliente y su link es la llave para cancelar el turno:
-// que no lo guarden caches compartidas ni se filtre como Referer a otros sitios.
+// Páginas con datos personales o de sesión: que no las guarden caches compartidas, no se filtre
+// el link como Referer a otros sitios (el del comprobante es privado) y no se indexen.
 const privateHeaders = [
   { key: "Cache-Control", value: "private, no-store" },
   { key: "Referrer-Policy", value: "no-referrer" },
@@ -11,8 +11,12 @@ const privateHeaders = [
 const nextConfig: NextConfig = {
   async headers() {
     return [
-      { source: "/turno/:token", headers: privateHeaders },
-      { source: "/admin/:path*", headers: privateHeaders },
+      { source: "/:slug/turno/:token", headers: privateHeaders },
+      { source: "/cuenta/:path*", headers: privateHeaders },
+      { source: "/cuenta", headers: privateHeaders },
+      { source: "/panel/:path*", headers: privateHeaders },
+      { source: "/panel", headers: privateHeaders },
+      { source: "/superadmin", headers: privateHeaders },
       { source: "/:path*", headers: [{ key: "X-Frame-Options", value: "DENY" }] },
     ];
   },
