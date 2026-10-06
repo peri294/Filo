@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Configuración de la peluquería (una sola fila, id = 1)
+model BusinessSetting {
+  id                Int    @id @default(1)
+  salonName         String @default("Barbería")
+  salonAddress      String @default("")
+  salonPhone        String @default("5491100000000") // WhatsApp del barbero, sin + ni espacios
+  openingTime       String @default("09:00") // HH:mm, hora de Argentina
+  closingTime       String @default("20:00")
+  slotDurationMin   Int    @default(30) // Unidad mínima de la agenda
+  daysOpen          String @default("1,2,3,4,5,6") // 0 = domingo ... 6 = sábado
+  bookingWindowDays Int    @default(30) // Cuántos días hacia adelante se puede reservar
+  minNoticeMin      Int    @default(30) // Anticipación mínima para reservar
+}
+
+// Servicios (Corte, Barba, Combo, etc.)
+model Service {
+  id           Int           @id @default(autoincrement())
+  name         String
+  description  String?
+  price        Int // Pesos argentinos, sin decimales
+  durationMin  Int           @default(30) // Múltiplo de slotDurationMin
+  sortOrder    Int           @default(0)
+  active       Boolean       @default(true)
+  appointments Appointment[]
+}
+
+// Turnos / Reservas
+model Appointment {
+  id               String    @id @default(cuid())
+  code             String    @unique // Código corto para mostrar y para WhatsApp, ej: TURN-K7P2QX
+  accessToken      String    @unique // Token largo del link del comprobante (/turno/[token])
+  startsAt         DateTime
+  endsAt           DateTime
+  clientName       String
+  clientPhone      String // Normalizado: solo dígitos
+  clientIp         String
+  serviceId        Int
+  service          Service   @relation(fields: [serviceId], references: [id])
+  price            Int // Precio del servicio al momento de reservar
+  paymentMethod    String // "EFECTIVO" | "MERCADOPAGO"
+  status           String // "PENDIENTE_WHATSAPP" | "PENDIENTE_PAGO" | "CONFIRMADO" | "CANCELADO"
+  expiresAt        DateTime? // Vencimiento de la reserva provisoria
+  clientNotifiedAt DateTime? // El cliente avisó que mandó el WhatsApp: ya no vence sola, decide el barbero
+  confirmedAt      DateTime?
+  cancelledAt      DateTime?
+  cancelReason     String? // "EXPIRADO" | "CLIENTE" | "BARBERO" | "RECHAZADO"
+
+  // Mercado Pago (se completa en la etapa de integración)
+  pricePaid      Int?
+  mpPreferenceId String?
+  mpPaymentId    String?
+  refundStatus   String? // "TOTAL" | "PARCIAL_50"
+  refundAmount   Int?
+  refundId       String?
+
+  createdAt DateTime   @default(now())
+  slotLocks SlotLock[]
+
+  @@index([startsAt])
+  @@index([clientPhone, status])
+  @@index([clientIp, createdAt])
+  @@index([status, expiresAt])
+}
+
+// Bloqueo manual de horarios desde el panel del barbero
+model BlockedSlot {
+  id        String     @id @default(cuid())
+  startsAt  DateTime
+  endsAt    DateTime
+  reason    String?
+  createdAt DateTime   @default(now())
+  slotLocks SlotLock[]
+}
+
+// Una fila por cada unidad de agenda ocupada. La restricción única sobre
+// startsAt hace que la base de datos impida dos reservas en el mismo horario,
+// aunque lleguen al mismo tiempo.
+model SlotLock {
+  startsAt      DateTime     @id
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  blockedSlotId String?
+  blockedSlot   BlockedSlot? @relation(fields: [blockedSlotId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@index([blockedSlotId])
+}

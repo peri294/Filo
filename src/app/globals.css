@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg: #0e0e0f;
+  --color-surface: #18181a;
+  --color-surface-2: #222225;
+  --color-line: #2e2e32;
+  --color-ink: #f3f1ec;
+  --color-muted: #a3a09a;
+  --color-brass: #d6a54b;
+  --color-brass-strong: #e8b95c;
+  --color-ok: #4ade80;
+  --color-warn: #fbbf24;
+  --color-bad: #f87171;
+  --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-display);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+/* Componentes reutilizables */
+@utility card {
+  @apply rounded-2xl border border-line bg-surface p-5;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-brass text-black hover:bg-brass-strong;
+}
+@utility btn-ghost {
+  @apply btn border border-line text-ink hover:bg-surface-2;
+}
+@utility btn-whatsapp {
+  @apply btn bg-[#25d366] text-black hover:bg-[#3ae07a];
+}
+@utility btn-danger {
+  @apply btn border border-bad/40 text-bad hover:bg-bad/10;
+}
+@utility input {
+  @apply w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-ink placeholder:text-muted/60 focus:border-brass focus:outline-none;
+}
+@utility label {
+  @apply mb-1.5 block text-sm font-medium text-muted;
+}
