@@ -18,11 +18,30 @@
 
 html {
   color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 body {
   background: var(--color-bg);
   color: var(--color-ink);
+  overflow-wrap: break-word;
+}
+
+/* Foco visible y consistente en todo el sitio (teclado, lectores, switch). */
+:focus-visible {
+  outline: 2px solid var(--color-brass-strong);
+  outline-offset: 2px;
+}
+
+/* El header es sticky: que los saltos con ancla o scrollIntoView no queden tapados. */
+[id] {
+  scroll-margin-top: 5rem;
 }
 
 /* Componentes reutilizables */
@@ -45,8 +64,14 @@ body {
   @apply btn border border-bad/40 text-bad hover:bg-bad/10;
 }
 @utility input {
-  @apply w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-ink placeholder:text-muted/60 focus:border-brass focus:outline-none;
+  @apply w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-ink placeholder:text-muted/70 focus:border-brass aria-invalid:border-bad;
 }
 @utility label {
   @apply mb-1.5 block text-sm font-medium text-muted;
+}
+@utility hint {
+  @apply mt-1.5 text-xs text-muted;
+}
+@utility field-error {
+  @apply mt-1.5 text-sm text-bad;
 }

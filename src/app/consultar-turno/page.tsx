@@ -1,4 +1,12 @@
 import { LookupForm } from "@/components/lookup-form";
+import { pageMetadata } from "../seo";
+
+export function generateMetadata() {
+  return pageMetadata({
+    title: "Mi turno",
+    description: "Buscá tu turno con el código de reserva y tu WhatsApp para verlo, confirmarlo o cancelarlo.",
+  });
+}
 
 export default function ConsultarTurnoPage() {
   return (
@@ -6,7 +14,7 @@ export default function ConsultarTurnoPage() {
       <div>
         <h1 className="font-display text-3xl uppercase">Mi turno</h1>
         <p className="mt-2 text-sm text-muted">
-          Ingresá el código que recibiste al reservar (por ejemplo TURN-K7P2QX) y el teléfono que usaste.
+          Ingresá el código que te dimos al reservar y el WhatsApp que usaste.
         </p>
       </div>
       <LookupForm />
