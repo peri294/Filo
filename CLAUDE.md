@@ -60,6 +60,11 @@ Los tests (Vitest, en `tests/`) usan una base aparte `test.db` que se recrea con
 - Efectivo: `PENDIENTE_WHATSAPP` 15 minutos; "Ya envié el mensaje" extiende hasta 12 h (sin pasar el inicio).
   La confirmación va al WhatsApp del local. Los vencidos se liberan en `releaseExpired()`, sin cron.
 - Límite de 3 reservas por hora por IP (decisión del dueño, no cambiar a "1 por IP").
+- Límites de login: solo cuentan los intentos fallidos, por IP y por celular. **Nunca un tope global**: dejaría que una
+  sola persona bloquee el acceso de todos.
+- La IP (`clientIp`) solo es confiable en Vercel (`x-real-ip`). Fuera de Vercel, sin un proxy de confianza que reescriba
+  `x-forwarded-for`, el cliente puede falsificarla y esquivar los límites por IP (login, SMS, reservas) y agotar el tope
+  diario de SMS (`OTP_DAILY_CAP`). Desplegar solo en Vercel, o adaptar `clientIp` al proxy que haya.
 - El cliente cancela solo si faltan más de 24 h. Asistencia ("Vino"/"No vino") solo en turnos confirmados ya empezados.
 - Recuperar clave: cada uno por SMS; plan B: el admin a sus barberos, el superadmin a los admins. Cambiar la clave cierra sesiones.
 - Reembolsos (con Mercado Pago): solo totales. Mercado Pago todavía NO se integra; no tocar esa parte.

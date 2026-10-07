@@ -152,6 +152,20 @@ describe("login del personal", () => {
     expect(await loginStaff(PHONE, "clave-buena", "4.4.4.4")).toMatch(/Demasiados intentos/);
   });
 
+  it("un ataque desde una IP no bloquea el ingreso del resto del personal", async () => {
+    await prisma.staffUser.create({ data: { phone: PHONE, passwordHash: await hashPassword("clave-buena"), name: "X", role: "SUPERADMIN" } });
+    // 250 intentos fallidos desde una sola IP, con celulares distintos.
+    for (let i = 0; i < 250; i++) await loginStaff(`11 7000-${String(i).padStart(4, "0")}`, "mala", "66.66.66.66");
+    expect(await loginStaff("11 7000-9999", "mala", "66.66.66.66")).toMatch(/Demasiados intentos/);
+    // El resto entra normalmente desde otra IP.
+    expect(await loginStaff(PHONE, "clave-buena", "10.0.0.7")).toBeNull();
+  });
+
+  it("los ingresos correctos no consumen ningún límite", async () => {
+    await prisma.staffUser.create({ data: { phone: PHONE, passwordHash: await hashPassword("clave-buena"), name: "X", role: "SUPERADMIN" } });
+    for (let i = 0; i < 30; i++) expect(await loginStaff(PHONE, "clave-buena", "10.0.0.8")).toBeNull();
+  });
+
   it("con la barbería suspendida, el panel queda bloqueado", async () => {
     const shop = await makeShop();
     await prisma.staffUser.create({

@@ -5,7 +5,7 @@ import { BookingError } from "@/lib/errors";
 import { normalizePhone } from "@/lib/format";
 import { verifyCode } from "@/lib/otp";
 import { hashPassword, passwordProblem, verifyPassword } from "@/lib/passwords";
-import { consume, resetLimit } from "@/lib/rate-limit";
+import { consume, isLimited, resetLimit } from "@/lib/rate-limit";
 
 /**
  * Dos tipos de sesión con cookies separadas:
@@ -25,9 +25,10 @@ const COOKIE: Record<SessionKind, string> = {
 const SESSION_HOURS: Record<SessionKind, number> = { STAFF: 12, CLIENT: 24 * 30 };
 
 const WINDOW_MS = 15 * 60_000;
-const MAX_PER_IP = 10;
-const MAX_PER_PHONE = 5;
-const MAX_GLOBAL = 200;
+// Solo cuentan los intentos fallidos, y el bloqueo es por IP o por celular: nunca para toda la
+// plataforma (un tope global dejaría que una sola persona deje sin acceso a todos).
+const MAX_FAILS_PER_IP = 10;
+const MAX_FAILS_PER_PHONE = 5;
 
 function hashId(id: string) {
   return createHash("sha256").update(id).digest("hex");
@@ -102,14 +103,29 @@ export async function requireClient() {
 
 let dummyHash: Promise<string> | null = null;
 
-/** Limita intentos por IP, por celular y en total. Devuelve un mensaje si hay que frenar. */
-async function loginAllowed(scope: string, phone: string, ip: string) {
-  const ok = [
-    await consume(`login:${scope}:ip:${ip}`, MAX_PER_IP, WINDOW_MS),
-    await consume(`login:${scope}:phone:${phone}`, MAX_PER_PHONE, WINDOW_MS),
-    await consume(`login:${scope}:global`, MAX_GLOBAL, WINDOW_MS),
-  ];
-  return ok.every(Boolean);
+const TOO_MANY_ATTEMPTS = "Demasiados intentos. Esperá unos minutos.";
+
+const failKeys = (scope: string, phone: string, ip: string) => ({
+  ip: `login:${scope}:ip:${ip}`,
+  phone: `login:${scope}:phone:${phone}`,
+});
+
+/** Si esta IP o este celular ya acumularon demasiados intentos fallidos. No suma nada. */
+async function loginBlocked(scope: string, phone: string, ip: string) {
+  const keys = failKeys(scope, phone, ip);
+  return (await isLimited(keys.ip, MAX_FAILS_PER_IP)) || (await isLimited(keys.phone, MAX_FAILS_PER_PHONE));
+}
+
+async function recordLoginFailure(scope: string, phone: string, ip: string) {
+  const keys = failKeys(scope, phone, ip);
+  await consume(keys.ip, MAX_FAILS_PER_IP, WINDOW_MS);
+  await consume(keys.phone, MAX_FAILS_PER_PHONE, WINDOW_MS);
+}
+
+async function clearLoginFailures(scope: string, phone: string, ip: string) {
+  const keys = failKeys(scope, phone, ip);
+  await resetLimit(keys.ip);
+  await resetLimit(keys.phone);
 }
 
 async function checkPassword(password: string, hash: string | undefined) {
@@ -123,24 +139,28 @@ const WRONG_LOGIN = "Celular o contraseña incorrectos";
 /** Devuelve un mensaje de error, o null si el login fue correcto. */
 export async function loginStaff(rawPhone: string, password: string, ip: string): Promise<string | null> {
   const phone = normalizePhone(rawPhone) ?? "invalido";
-  if (!(await loginAllowed("staff", phone, ip))) return "Demasiados intentos. Esperá unos minutos.";
+  if (await loginBlocked("staff", phone, ip)) return TOO_MANY_ATTEMPTS;
   const user = await prisma.staffUser.findUnique({ where: { phone } });
   const ok = await checkPassword(password, user?.passwordHash);
-  if (!user || !ok || !user.active) return WRONG_LOGIN;
-  await resetLimit(`login:staff:ip:${ip}`);
-  await resetLimit(`login:staff:phone:${phone}`);
+  if (!user || !ok || !user.active) {
+    await recordLoginFailure("staff", phone, ip);
+    return WRONG_LOGIN;
+  }
+  await clearLoginFailures("staff", phone, ip);
   await startSession("STAFF", user.id);
   return null;
 }
 
 export async function loginClient(rawPhone: string, password: string, ip: string): Promise<string | null> {
   const phone = normalizePhone(rawPhone) ?? "invalido";
-  if (!(await loginAllowed("client", phone, ip))) return "Demasiados intentos. Esperá unos minutos.";
+  if (await loginBlocked("client", phone, ip)) return TOO_MANY_ATTEMPTS;
   const client = await prisma.client.findUnique({ where: { phone } });
   const ok = await checkPassword(password, client?.passwordHash);
-  if (!client || !ok) return WRONG_LOGIN;
-  await resetLimit(`login:client:ip:${ip}`);
-  await resetLimit(`login:client:phone:${phone}`);
+  if (!client || !ok) {
+    await recordLoginFailure("client", phone, ip);
+    return WRONG_LOGIN;
+  }
+  await clearLoginFailures("client", phone, ip);
   await startSession("CLIENT", client.id);
   return null;
 }
