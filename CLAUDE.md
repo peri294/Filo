@@ -4,7 +4,6 @@
 
 Plataforma de turnos para varias barberías (Argentina). Cada barbería tiene su página en `/<slug>`, su panel
 y barberos con agenda propia. Los clientes tienen una sola cuenta para todas las barberías.
-Este proyecto vive en la carpeta `PagWeb/` del repo `proyectos`: correr todos los comandos desde acá.
 
 ## Puesta en marcha (local o en la nube)
 
