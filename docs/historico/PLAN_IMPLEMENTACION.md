@@ -1,3 +1,5 @@
+> **Documento histórico:** primer plan del proyecto (una sola barbería, sin cuentas de cliente). El diseño actual está en el [README](../../README.md).
+
 # Plan de Implementación: Web Peluquería (Sistema Exclusivo de Turnos)
 
 ## Descripción General

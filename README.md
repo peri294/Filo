@@ -1,36 +1,121 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Turnos online para barberías
 
-## Getting Started
+Plataforma SaaS **multi-barbería** para reservar turnos online, pensada para Argentina. Cada barbería tiene su
+página pública (`/<slug>`), un panel de gestión y barberos con agenda propia. Los clientes usan **una sola cuenta**,
+verificada por SMS, para reservar en cualquier barbería de la plataforma.
 
-First, run the development server:
+> Estado: MVP funcional, con tests. El pago con Mercado Pago está modelado en la base pero todavía no integrado.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Funcionalidades
+
+**Clientes**
+- Registro e inicio de sesión con celular verificado por SMS (código de un solo uso).
+- Reserva guiada: servicio → barbero (o "el primero disponible") → día → horario → confirmación.
+- Pago en efectivo: reserva provisoria de 15 minutos que se confirma por WhatsApp con el local.
+- Comprobante con link privado, "Mis turnos" y cancelación propia con más de 24 h de anticipación.
+
+**Barberías (admin y barberos)**
+- Agenda diaria y semanal; el barbero ve solo la suya, el admin la de todo el local.
+- Confirmar o rechazar turnos, marcar asistencia ("Vino" / "No vino") y bloquear horarios.
+- Configuración del local: horario por día de la semana, servicios, precios, duración, anticipación mínima.
+- Alta de barberos con horario propio (recortado automáticamente al horario del local).
+- Métricas: turnos, ingresos, ausencias, cancelaciones, clientes nuevos y recurrentes, ranking por barbero.
+
+**Superadmin (dueño de la plataforma)**
+- Alta, suspensión y reactivación de barberías; recuperación de acceso de los admins.
+
+## Stack
+
+| Capa | Tecnología |
+| --- | --- |
+| Framework | **Next.js 16** (App Router, Server Components, Route Handlers) |
+| UI | **React 19**, **Tailwind CSS v4**, lucide-react |
+| Lenguaje | **TypeScript** (modo estricto) |
+| Base de datos | **Prisma 7** (ORM + migraciones) sobre **SQLite** (`better-sqlite3`); preparado para Postgres |
+| Validación | **Zod 4** en todas las entradas de la API |
+| Fechas | date-fns + `@date-fns/tz` (zona horaria de Argentina) |
+| SMS | Twilio (API REST) |
+| Tests | **Vitest** con base de datos real de prueba |
+| Calidad | ESLint 9, `tsc --noEmit` |
+| Deploy | Vercel |
+
+## Arquitectura y decisiones técnicas
+
+- **Multi-tenant por slug.** Toda consulta del panel filtra por la barbería del usuario (y por barbero cuando
+  corresponde). Un recurso de otra barbería responde **404**, sin revelar que existe. La resolución del tenant está
+  centralizada en `src/lib/tenant.ts`.
+- **Reservas dobles imposibles a nivel base de datos.** Cada bloque de 5 minutos ocupado de un barbero es una fila
+  de `SlotLock` con clave primaria `(barberId, startsAt)`. Dos reservas simultáneas del mismo horario chocan en la
+  base dentro de una transacción, sin depender de chequeos previos en la aplicación.
+- **Un turno activo por cliente y barbería**, garantizado con la tabla `ClientHold` (clave `(tenantId, clientId)`).
+- **"El primero disponible"** asigna al barbero libre con menos turnos ese día; si hay conflicto, reintenta con el siguiente.
+- **Vencimientos sin cron:** las reservas provisorias vencidas se liberan de forma perezosa (`releaseExpired()`) al
+  consultar disponibilidad o reservar, lo que simplifica el deploy serverless.
+- **Lógica de negocio separada de la capa HTTP:** las rutas de `src/app/api` validan y delegan en `src/lib/*`
+  (`booking`, `auth`, `otp`, `metrics`, `admin-config`, `superadmin`), que es lo que cubren los tests.
+
+## Seguridad
+
+- Contraseñas con **scrypt** + salt aleatorio y comparación en tiempo constante (`timingSafeEqual`).
+- Sesiones propias en base de datos: cookie `httpOnly`, `secure`, `sameSite=lax` con id aleatorio de 256 bits; en la
+  base se guarda solo su hash SHA-256. Cookies separadas para personal y clientes. Cambiar la clave cierra las sesiones.
+- Códigos SMS hasheados, con vencimiento, intentos limitados y tope diario global contra el **bombeo de SMS**.
+- **Rate limiting** persistido en la base (funciona con varias instancias serverless): login por IP y por celular
+  (solo cuentan los intentos fallidos), envío de SMS y reservas por IP.
+- Chequeo del header `Origin` en las mutaciones (protección CSRF), control de acceso por rol (`SUPERADMIN` / `ADMIN` / `BARBER`).
+- Cabeceras: `X-Frame-Options: DENY`; páginas privadas con `Cache-Control: no-store`, `Referrer-Policy: no-referrer`
+  y `noindex`.
+- Precios en pesos enteros (`Int`), nunca punto flotante.
+
+## Modelo de datos
+
+12 modelos Prisma: `Tenant`, `Barber`, `StaffUser`, `Client`, `Session`, `OtpCode`, `Service`, `Appointment`,
+`BlockedSlot`, `SlotLock`, `ClientHold`, `RateLimit`. Ver [`prisma/schema.prisma`](prisma/schema.prisma).
+
+## Estructura
+
+```
+src/
+  app/
+    (sistema)/        páginas de la plataforma: inicio, /cuenta, /panel, /superadmin, términos
+    [slug]/           página pública de cada barbería, /reservar y comprobante /turno/[token]
+    api/              Route Handlers: [slug], cuenta, panel, superadmin
+  components/         formularios y componentes de cliente (wizard de reserva, editor de barberos...)
+  lib/                lógica de negocio, auth, OTP, SMS, rate limiting, horarios
+prisma/               schema, migraciones y seed
+tests/                tests de integración (Vitest) contra una base SQLite aparte
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Cómo correrlo
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Requiere Node.js 20+.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cp .env.example .env          # completar SUPERADMIN_PHONE y SUPERADMIN_PASSWORD
+npm install                   # también genera el cliente de Prisma
+npx prisma migrate deploy
+npx prisma db seed            # superadmin + barbería "demo" con 2 barberos
+npm run dev
+```
 
-## Learn More
+Abrir <http://localhost:3000/demo> (página pública), `/panel` (barbería) y `/cuenta` (cliente).
+Sin credenciales de Twilio, los códigos SMS se muestran en la consola del servidor. Las claves de demo están en
+[`prisma/seed.ts`](prisma/seed.ts).
 
-To learn more about Next.js, take a look at the following resources:
+## Tests y calidad
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm test            # 68 tests de integración (Vitest) sobre test.db, que se recrea en cada corrida
+npm run typecheck
+npm run lint
+npm run build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Los tests cubren reservas concurrentes y dobles, asignación de "el primero disponible", vencimientos, cancelaciones,
+aislamiento entre barberías y barberos, login, límites de intentos y flujos de recuperación por SMS.
 
-## Deploy on Vercel
+## Próximos pasos
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Integración de Mercado Pago (Checkout Pro y reembolsos totales).
+- Migración a Postgres para producción.
+- Revisión legal de los textos de términos y privacidad (hoy son borradores).
