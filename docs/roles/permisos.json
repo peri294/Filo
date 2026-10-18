@@ -1,0 +1,50 @@
+{
+  "_comentario": "Qué archivos puede tocar cada rol. Lo usa scripts/verificar-rol.ts en el hook commit-msg y en el CI. Patrones: ** = cualquier ruta, * = dentro de una carpeta, [0-9] = un dígito. Un archivo vale si coincide con algún 'permitidos' y con ningún 'prohibidos'. Solo el dueño cambia este archivo (rol mantenedor).",
+  "roles": {
+    "especificador": {
+      "descripcion": "Escribe la spec: qué y por qué.",
+      "permitidos": [
+        "docs/specs/[0-9][0-9][0-9]-*/spec.md",
+        "docs/specs/[0-9][0-9][0-9]-*/bitacora.md",
+        "docs/specs/README.md"
+      ]
+    },
+    "planificador": {
+      "descripcion": "Escribe el plan y parte el trabajo en tareas.",
+      "permitidos": [
+        "docs/specs/[0-9][0-9][0-9]-*/plan.md",
+        "docs/specs/[0-9][0-9][0-9]-*/tareas.md",
+        "docs/specs/[0-9][0-9][0-9]-*/bitacora.md"
+      ]
+    },
+    "tester": {
+      "descripcion": "Escribe los tests de una tarea y los deja fallando (rojo). No toca código de producción.",
+      "permitidos": ["tests/**", "docs/specs/[0-9][0-9][0-9]-*/bitacora.md"]
+    },
+    "implementador": {
+      "descripcion": "Escribe el código que hace pasar los tests (verde) y refactoriza. No toca los tests.",
+      "permitidos": [
+        "src/**",
+        "prisma/**",
+        "docs/specs/[0-9][0-9][0-9]-*/tareas.md",
+        "docs/specs/[0-9][0-9][0-9]-*/bitacora.md"
+      ]
+    },
+    "revisor": {
+      "descripcion": "Verifica contra la spec y la constitución, deja la revisión escrita y cierra la spec. No toca código ni tests.",
+      "permitidos": [
+        "docs/specs/[0-9][0-9][0-9]-*/spec.md",
+        "docs/specs/[0-9][0-9][0-9]-*/revision.md",
+        "docs/specs/[0-9][0-9][0-9]-*/bitacora.md",
+        "docs/specs/README.md",
+        "AGENTS.md",
+        "README.md"
+      ]
+    },
+    "mantenedor": {
+      "descripcion": "Configuración, dependencias, CI, documentación general y herramientas, con aprobación del dueño. No toca código, tests ni specs.",
+      "permitidos": ["**"],
+      "prohibidos": ["src/**", "tests/**", "prisma/**", "docs/specs/[0-9][0-9][0-9]-*/**"]
+    }
+  }
+}

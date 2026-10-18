@@ -17,9 +17,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # historial completo, para revisar cada commit del PR
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # Aislamiento de roles: cada commit del PR declara su rol y toca solo sus archivos (docs/roles/).
+      - if: github.event_name == 'pull_request'
+        run: npx tsx scripts/verificar-rol.ts --rango "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
       - run: npm run check

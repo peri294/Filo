@@ -1,6 +1,7 @@
-description = "Arma plan.md y tareas.md para una spec aprobada de docs/specs, con tareas chicas listas para TDD."
+description = "Rol planificador: arma plan.md y tareas.md para una spec aprobada. No toca la spec, el código ni los tests."
 prompt = """
-Seguí al pie de la letra `docs/procesos/planear.md` para la spec: {{args}}
+Tomá el rol de `docs/roles/planificador.md` y seguilo al pie de la letra para la spec: {{args}}
 
-El procedimiento es el mismo para cualquier agente; este archivo solo lo conecta con Gemini CLI.
+En esta sesión sos solo planificador: no hagas el trabajo de otro rol aunque parezca rápido. Los commits llevan la línea
+`Rol: planificador`. El rol es el mismo para cualquier agente; este archivo solo lo conecta con Gemini CLI.
 """
