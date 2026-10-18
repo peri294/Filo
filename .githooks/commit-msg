@@ -1,0 +1,10 @@
+#!/bin/sh
+# Con el mensaje ya escrito: el commit declara su rol ("Rol: <rol>") y solo toca los archivos de ese rol
+# (docs/roles/permisos.json). Después, typecheck, salvo para el tester: sus tests pueden usar funciones que todavía
+# no existen (ese es su "rojo"); el implementador es quien deja todo compilando. No saltearlo con --no-verify.
+npx --no-install tsx scripts/verificar-rol.ts --mensaje "$1" || exit 1
+if grep -qiE '^rol:[[:space:]]*tester[[:space:]]*$' "$1"; then
+  echo "Rol tester: typecheck salteado (los tests pueden estar en rojo)."
+  exit 0
+fi
+npm run --silent typecheck

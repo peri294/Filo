@@ -29,17 +29,17 @@ Chequeos antes de dar algo por terminado: `npm run check` (= `format:check` + `t
 Antes de commitear, `npm run format` deja el código con el formato de Prettier. Node 24 (`.nvmrc`; npm falla con otra versión).
 Los tests (Vitest, en `tests/`) usan una base aparte `prisma/test.db` que se recrea con las migraciones en cada corrida; nunca tocan `prisma/dev.db`.
 
-## Forma de trabajo: SDD + TDD
+## Forma de trabajo: SDD + TDD con roles aislados
 
-Detalle en [`docs/flujo-de-trabajo.md`](docs/flujo-de-trabajo.md). Resumen:
+Detalle en [`docs/flujo-de-trabajo.md`](docs/flujo-de-trabajo.md) y [`docs/roles/`](docs/roles/README.md). Resumen:
 
-- **Comportamiento nuevo = spec primero.** `docs/specs/NNN-nombre/{spec,plan,tareas}.md` (plantilla en
-  `docs/specs/_plantilla/`). Sin spec `Aprobada` y sin preguntas abiertas no se escribe código.
-- **Cada tarea con TDD:** test que falla por la razón correcta → mínimo código → refactor. Los bugs también:
-  primero el test que los reproduce.
-- **Trazabilidad:** cada criterio `CA-n` de la spec de la spec `NNN` tiene un test con `[NNN-CA-n]` en el nombre.
-- Procesos (iguales para cualquier agente): `docs/procesos/{spec,planear,tdd,cerrar}.md`.
-- No hace falta spec para textos, estilos, refactors o dependencias, pero sí `npm run check`.
+- **Comportamiento nuevo = spec primero.** `docs/specs/NNN-nombre/` con `spec.md`, `plan.md`, `tareas.md`,
+  `bitacora.md` y `revision.md` (plantillas en `docs/specs/_plantilla/`). Sin spec `Aprobada` y sin preguntas
+  abiertas no se escribe código.
+- **Roles aislados:** especificador → planificador → por cada tarea, tester (tests en rojo) → implementador (código
+  en verde) → revisor. Cada sesión toma **un solo rol** y toca solo sus archivos (`docs/roles/permisos.json`); el
+  tester y el implementador de una tarea son sesiones distintas (constitución 7.7).
+- **Trazabilidad:** cada criterio `CA-n` de la spec `NNN` tiene un test con `[NNN-CA-n]` en el nombre.
 - Una spec que choque con [`docs/constitucion.md`](docs/constitucion.md) no se aprueba sin enmendarla antes (art. 9).
 
 ## Protocolo para cualquier agente (Claude, Gemini, Grok, Codex…)
@@ -49,30 +49,36 @@ cambia en este archivo.
 
 **Al empezar cada sesión:**
 1. Leer **`docs/constitucion.md` completa**. Manda sobre todo lo demás: constitución > spec > plan > código.
-2. Leer `docs/flujo-de-trabajo.md`.
-3. Si la tarea es de una spec, leer su carpeta `docs/specs/NNN-*/`, incluida la **bitácora** de `tareas.md`: ahí
-   está lo que dejó la sesión anterior, que puede haber sido de otro agente.
+2. Leer `docs/flujo-de-trabajo.md` y `docs/roles/README.md`.
+3. **Tomar un solo rol** y leer su documento. Si el dueño no dijo cuál, preguntar:
+
+   | Pedido del dueño | Rol |
+   | --- | --- |
+   | Funcionalidad o cambio de comportamiento nuevo | `docs/roles/especificador.md` |
+   | Planear una spec aprobada | `docs/roles/planificador.md` |
+   | Escribir los tests de una tarea o de un bug | `docs/roles/tester.md` |
+   | Hacer pasar los tests de una tarea o de un bug | `docs/roles/implementador.md` |
+   | Revisar y cerrar una spec | `docs/roles/revisor.md` |
+   | Configuración, dependencias, CI, docs generales | `docs/roles/mantenedor.md` |
+
+4. Si el trabajo es de una spec, leer su carpeta `docs/specs/NNN-*/`, empezando por `bitacora.md`: ahí está lo que
+   dejó la sesión anterior, que puede haber sido de otro rol y de otro agente.
 
 **Mientras trabaja:**
-- Seguir el proceso que corresponda, al pie de la letra:
-
-  | Pedido del dueño | Proceso |
-  | --- | --- |
-  | Funcionalidad o cambio de comportamiento nuevo | `docs/procesos/spec.md` |
-  | Planear una spec aprobada | `docs/procesos/planear.md` |
-  | Implementar una tarea o arreglar un bug | `docs/procesos/tdd.md` |
-  | Cerrar una spec | `docs/procesos/cerrar.md` |
-
-- **Todo lo decidido queda escrito en el repo** (spec, plan, tareas, bitácora), nunca solo en el chat: la próxima
-  sesión puede ser de otro agente y no ve esta conversación.
-- Frenar y esperar al dueño en los puntos que marcan los procesos (spec, plan, cierre) y ante cualquier choque con la
-  constitución. Solo el dueño la enmienda.
+- Hacer **solo el trabajo del rol**, aunque el de otro parezca rápido. Si hace falta algo de otro rol, se anota en la
+  bitácora y se frena.
+- **Cada commit lleva una línea `Rol: <rol>`** y toca solo los archivos de ese rol. El hook `commit-msg` y el CI lo
+  rechazan si no.
+- **Todo lo decidido queda escrito en el repo** (spec, plan, tareas, bitácora, revisión), nunca solo en el chat: la
+  próxima sesión puede ser de otro agente y no ve esta conversación.
+- Frenar y esperar al dueño en los puntos que marca cada rol y ante cualquier choque con la constitución. Solo el
+  dueño la enmienda.
 - No commitear, pushear ni mergear sin que el dueño lo pida. Todo cambio entra a `main` por PR.
-- **Nunca saltear los controles:** nada de `git commit --no-verify` ni de desactivar el hook o el CI. Si un control
-  falla, se arregla la causa.
+- **Nunca saltear los controles:** nada de `git commit --no-verify` ni de desactivar los hooks o el CI. Si un
+  control falla, se arregla la causa.
 
-**Al terminar la sesión:** anotar una línea en la bitácora de `tareas.md` (fecha, agente, qué se hizo, qué sigue) y
-dejar `npm run check` en verde o explicar por qué no.
+**Al terminar la sesión:** anotar una línea en `bitacora.md` de la spec (fecha, rol, agente, qué se hizo, qué sigue)
+y dejar `npm run check` en verde, o explicar por qué no (por ejemplo, el tester deja tests en rojo a propósito).
 
 ## Stack
 

@@ -87,7 +87,7 @@ src/
 prisma/               schema, migraciones, seed y las bases SQLite locales (dev.db, test.db; ignoradas)
 tests/                tests de integración (Vitest) contra una base SQLite aparte
 scripts/              herramientas del repo (verificar-specs.ts: trazabilidad de las specs)
-docs/                 constitución, flujo de trabajo, procesos, specs e históricos
+docs/                 constitución, flujo de trabajo, roles de los agentes, specs e históricos
 .claude/ .gemini/     atajos de cada agente; la guía común está en AGENTS.md
 ```
 

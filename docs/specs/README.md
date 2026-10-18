@@ -1,8 +1,8 @@
 # Specs
 
-Una carpeta por funcionalidad o cambio de comportamiento, numerada: `NNN-nombre-corto/` con `spec.md`, `plan.md` y
-`tareas.md`. Se arranca con el proceso [`../procesos/spec.md`](../procesos/spec.md), que copia
-[`_plantilla/`](_plantilla/). El flujo completo está en [`../flujo-de-trabajo.md`](../flujo-de-trabajo.md).
+Una carpeta por funcionalidad o cambio de comportamiento, numerada: `NNN-nombre-corto/` con `spec.md`, `plan.md`,
+`tareas.md`, `bitacora.md` y `revision.md`. Cada archivo lo escribe un rol distinto
+([`../roles/`](../roles/README.md)), a partir de las plantillas de [`_plantilla/`](_plantilla/). El flujo completo está en [`../flujo-de-trabajo.md`](../flujo-de-trabajo.md).
 
 | Nº | Spec | Estado |
 | --- | --- | --- |
