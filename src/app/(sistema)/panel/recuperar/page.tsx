@@ -1,7 +1,11 @@
 import { RecoverForm } from "@/components/auth-forms";
 import { pageMetadata } from "../../../seo";
 
-export const metadata = pageMetadata({ title: "Recuperar contraseña del panel", description: "Recuperá tu contraseña con un código por SMS.", noIndex: true });
+export const metadata = pageMetadata({
+  title: "Recuperar contraseña del panel",
+  description: "Recuperá tu contraseña con un código por SMS.",
+  noIndex: true,
+});
 
 export default function PanelRecuperarPage() {
   return (

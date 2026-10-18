@@ -171,7 +171,8 @@ export type RegisterInput = { phone: string; code: string; name: string; passwor
 export async function registerClient(input: RegisterInput) {
   const phone = normalizePhone(input.phone);
   if (!phone) throw new BookingError(400, "Ingresá un celular válido con código de área");
-  if (!input.acceptTerms) throw new BookingError(400, "Para crear la cuenta tenés que aceptar los términos y la política de privacidad");
+  if (!input.acceptTerms)
+    throw new BookingError(400, "Para crear la cuenta tenés que aceptar los términos y la política de privacidad");
   const problem = passwordProblem(input.password);
   if (problem) throw new BookingError(400, problem);
 

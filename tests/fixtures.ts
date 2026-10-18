@@ -42,8 +42,12 @@ export type Shop = Awaited<ReturnType<typeof makeShop>>;
 /** Barbería con dos barberos (Ana y Beto, todo el horario del local) y dos servicios. */
 export async function makeShop(slug = "uno") {
   const tenant = await prisma.tenant.create({ data: { slug, name: `Barbería ${slug}`, whatsapp: "5491100000000" } });
-  const corte = await prisma.service.create({ data: { tenantId: tenant.id, name: "Corte", price: 12000, durationMin: 30 } });
-  const combo = await prisma.service.create({ data: { tenantId: tenant.id, name: "Combo", price: 17000, durationMin: 60 } });
+  const corte = await prisma.service.create({
+    data: { tenantId: tenant.id, name: "Corte", price: 12000, durationMin: 30 },
+  });
+  const combo = await prisma.service.create({
+    data: { tenantId: tenant.id, name: "Combo", price: 17000, durationMin: 60 },
+  });
   const ana = await prisma.barber.create({ data: { tenantId: tenant.id, name: "Ana", sortOrder: 0 } });
   const beto = await prisma.barber.create({ data: { tenantId: tenant.id, name: "Beto", sortOrder: 1 } });
   return { tenant, corte: corte.id, combo: combo.id, ana, beto };
@@ -100,4 +104,8 @@ export async function locksOf(appointmentId: string) {
 }
 
 export const adminOf = (shop: Shop) => ({ role: "ADMIN", tenantId: shop.tenant.id, barberId: null });
-export const barberOf = (shop: Shop, barber: { id: string }) => ({ role: "BARBER", tenantId: shop.tenant.id, barberId: barber.id });
+export const barberOf = (shop: Shop, barber: { id: string }) => ({
+  role: "BARBER",
+  tenantId: shop.tenant.id,
+  barberId: barber.id,
+});

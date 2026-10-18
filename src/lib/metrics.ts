@@ -23,7 +23,11 @@ export async function getMetrics(tenant: Tenant, from: string, to: string, barbe
 
   const appointments = await prisma.appointment.findMany({
     // Ojo: un NOT simple sobre cancelReason también descartaría los NULL (los turnos no cancelados).
-    where: { ...scope, startsAt: { gte: start, lt: end }, OR: [{ cancelReason: null }, { cancelReason: { not: "EXPIRADO" } }] },
+    where: {
+      ...scope,
+      startsAt: { gte: start, lt: end },
+      OR: [{ cancelReason: null }, { cancelReason: { not: "EXPIRADO" } }],
+    },
     include: { service: { select: { id: true, name: true } }, barber: { select: { id: true, name: true } } },
   });
 
@@ -31,7 +35,9 @@ export async function getMetrics(tenant: Tenant, from: string, to: string, barbe
   const kept = appointments.filter((a) => a.status !== "CANCELADO");
   const attended = kept.filter((a) => a.attendance === "ASISTIO");
   const noShow = kept.filter((a) => a.attendance === "NO_VINO");
-  const pendingMark = kept.filter((a) => a.status === "CONFIRMADO" && !a.attendance && a.startsAt.getTime() < Date.now());
+  const pendingMark = kept.filter(
+    (a) => a.status === "CONFIRMADO" && !a.attendance && a.startsAt.getTime() < Date.now(),
+  );
 
   // Clientes nuevos y recurrentes: se mira si tenían turnos anteriores en esta barbería.
   const clientIds = [...new Set(kept.map((a) => a.clientId))];

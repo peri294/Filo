@@ -1,7 +1,10 @@
 import { BRAND_NAME } from "@/lib/brand";
 import { pageMetadata } from "../../seo";
 
-export const metadata = pageMetadata({ title: "Términos y condiciones", description: `Términos de uso de ${BRAND_NAME}.` });
+export const metadata = pageMetadata({
+  title: "Términos y condiciones",
+  description: `Términos de uso de ${BRAND_NAME}.`,
+});
 
 // BORRADOR: este texto es una base y tiene que revisarlo un abogado antes de publicar el sitio.
 export default function TerminosPage() {
@@ -21,8 +24,9 @@ export default function TerminosPage() {
       </p>
       <h2 className="font-semibold">3. Reservas, confirmación y cancelación</h2>
       <p>
-        Las reservas con pago en efectivo quedan provisorias hasta que la barbería las confirma por WhatsApp. Podés cancelar
-        desde la web hasta 24 horas antes del turno; con menos anticipación, tenés que comunicarte con la barbería.
+        Las reservas con pago en efectivo quedan provisorias hasta que la barbería las confirma por WhatsApp. Podés
+        cancelar desde la web hasta 24 horas antes del turno; con menos anticipación, tenés que comunicarte con la
+        barbería.
       </p>
       <h2 className="font-semibold">4. Uso correcto</h2>
       <p>

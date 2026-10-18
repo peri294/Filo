@@ -55,7 +55,11 @@ export default async function MetricasPage({ searchParams }: PageProps<"/panel/m
   const from = addDaysToKey(to, -(days - 1));
   // El barbero ve solo sus números; el admin puede ver los de un barbero puntual.
   const barberId =
-    user.role === "BARBER" ? (user.barberId ?? undefined) : typeof barbero === "string" && barbero ? barbero : undefined;
+    user.role === "BARBER"
+      ? (user.barberId ?? undefined)
+      : typeof barbero === "string" && barbero
+        ? barbero
+        : undefined;
   const m = await getMetrics(user.tenant, isDateKey(from) ? from : to, to, barberId);
 
   return (
@@ -102,7 +106,11 @@ export default async function MetricasPage({ searchParams }: PageProps<"/panel/m
       <div className="grid gap-3 sm:grid-cols-2">
         <section className="card space-y-3">
           <h2 className="font-semibold">Servicios más pedidos</h2>
-          {m.services.length ? <Bars rows={m.services.map((s) => ({ label: s.name, value: s.count }))} /> : <p className="text-sm text-muted">Sin datos.</p>}
+          {m.services.length ? (
+            <Bars rows={m.services.map((s) => ({ label: s.name, value: s.count }))} />
+          ) : (
+            <p className="text-sm text-muted">Sin datos.</p>
+          )}
         </section>
         {m.barbers.length > 0 && (
           <section className="card space-y-3">

@@ -39,7 +39,8 @@ export async function createTenant(input: TenantInput) {
   if (!adminPhone) throw new BookingError(400, "Celular del admin inválido");
   const problem = passwordProblem(input.adminPassword);
   if (problem) throw new BookingError(400, problem);
-  if (await prisma.tenant.findUnique({ where: { slug: input.slug } })) throw new BookingError(409, "Esa dirección ya está en uso");
+  if (await prisma.tenant.findUnique({ where: { slug: input.slug } }))
+    throw new BookingError(409, "Esa dirección ya está en uso");
   if (await prisma.staffUser.findUnique({ where: { phone: adminPhone } })) {
     throw new BookingError(409, "Ese celular ya tiene un usuario del panel");
   }

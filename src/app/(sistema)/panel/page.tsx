@@ -134,7 +134,10 @@ export default async function PanelPage({ searchParams }: PageProps<"/panel">) {
 
       {isAdmin && barbers.length > 1 && (
         <nav aria-label="Filtrar por barbero" className="flex flex-wrap gap-2">
-          {[{ id: null as string | null, name: "Todos" }, ...barbers.map((b) => ({ id: b.id as string | null, name: b.name }))].map((b) => (
+          {[
+            { id: null as string | null, name: "Todos" },
+            ...barbers.map((b) => ({ id: b.id as string | null, name: b.name })),
+          ].map((b) => (
             <Link
               key={b.id ?? "todos"}
               href={query({ barbero: b.id })}
@@ -172,13 +175,28 @@ export default async function PanelPage({ searchParams }: PageProps<"/panel">) {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <a href={clientWhatsapp(a)} target="_blank" rel="noopener noreferrer" className="btn-ghost px-3" aria-label={`WhatsApp a ${a.clientName}`}>
+                  <a
+                    href={clientWhatsapp(a)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-ghost px-3"
+                    aria-label={`WhatsApp a ${a.clientName}`}
+                  >
                     <MessageCircle className="size-4" aria-hidden />
                   </a>
-                  <ActionButton url={`/api/panel/turnos/${a.id}`} body={{ action: "confirm" }} className="btn-primary px-4">
+                  <ActionButton
+                    url={`/api/panel/turnos/${a.id}`}
+                    body={{ action: "confirm" }}
+                    className="btn-primary px-4"
+                  >
                     Confirmar
                   </ActionButton>
-                  <ActionButton url={`/api/panel/turnos/${a.id}`} body={{ action: "reject" }} className="btn-danger px-4" confirmText="¿Rechazar?">
+                  <ActionButton
+                    url={`/api/panel/turnos/${a.id}`}
+                    body={{ action: "reject" }}
+                    className="btn-danger px-4"
+                    confirmText="¿Rechazar?"
+                  >
                     Rechazar
                   </ActionButton>
                 </div>
@@ -190,13 +208,21 @@ export default async function PanelPage({ searchParams }: PageProps<"/panel">) {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <Link href={query({ fecha: addDaysToKey(weekStart, -7) })} className="btn-ghost px-3 py-2" aria-label="Semana anterior">
+          <Link
+            href={query({ fecha: addDaysToKey(weekStart, -7) })}
+            className="btn-ghost px-3 py-2"
+            aria-label="Semana anterior"
+          >
             <ChevronLeft className="size-4" aria-hidden />
           </Link>
           <Link href={query({ fecha: todayKey() })} className="text-sm text-muted hover:text-ink">
             Hoy
           </Link>
-          <Link href={query({ fecha: addDaysToKey(weekStart, 7) })} className="btn-ghost px-3 py-2" aria-label="Semana siguiente">
+          <Link
+            href={query({ fecha: addDaysToKey(weekStart, 7) })}
+            className="btn-ghost px-3 py-2"
+            aria-label="Semana siguiente"
+          >
             <ChevronRight className="size-4" aria-hidden />
           </Link>
         </div>
@@ -230,7 +256,10 @@ export default async function PanelPage({ searchParams }: PageProps<"/panel">) {
           <ul className="space-y-2">
             {agenda.map((item) =>
               item.kind === "appt" ? (
-                <li key={item.appt.id} className="flex flex-col gap-3 rounded-xl bg-surface-2 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <li
+                  key={item.appt.id}
+                  className="flex flex-col gap-3 rounded-xl bg-surface-2 p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div className="flex gap-3 text-sm">
                     <span className="font-display text-lg tabular-nums">{formatTime(item.appt.startsAt)}</span>
                     <div>
@@ -250,21 +279,33 @@ export default async function PanelPage({ searchParams }: PageProps<"/panel">) {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <a href={clientWhatsapp(item.appt)} target="_blank" rel="noopener noreferrer" className="btn-ghost px-3 py-2" aria-label={`WhatsApp a ${item.appt.clientName}`}>
+                    <a
+                      href={clientWhatsapp(item.appt)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-ghost px-3 py-2"
+                      aria-label={`WhatsApp a ${item.appt.clientName}`}
+                    >
                       <MessageCircle className="size-4" aria-hidden />
                     </a>
                     {item.appt.status === "CONFIRMADO" && hasStarted(item.appt) ? (
                       <>
                         <ActionButton
                           url={`/api/panel/turnos/${item.appt.id}`}
-                          body={{ action: "attendance", attendance: item.appt.attendance === "ASISTIO" ? null : "ASISTIO" }}
+                          body={{
+                            action: "attendance",
+                            attendance: item.appt.attendance === "ASISTIO" ? null : "ASISTIO",
+                          }}
                           className={`${item.appt.attendance === "ASISTIO" ? "btn-primary" : "btn-ghost"} px-3 py-2 text-sm`}
                         >
                           Vino
                         </ActionButton>
                         <ActionButton
                           url={`/api/panel/turnos/${item.appt.id}`}
-                          body={{ action: "attendance", attendance: item.appt.attendance === "NO_VINO" ? null : "NO_VINO" }}
+                          body={{
+                            action: "attendance",
+                            attendance: item.appt.attendance === "NO_VINO" ? null : "NO_VINO",
+                          }}
                           className={`${item.appt.attendance === "NO_VINO" ? "btn-danger bg-bad/15" : "btn-ghost"} px-3 py-2 text-sm`}
                         >
                           No vino
@@ -283,7 +324,10 @@ export default async function PanelPage({ searchParams }: PageProps<"/panel">) {
                   </div>
                 </li>
               ) : (
-                <li key={item.block.id} className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-line p-3 text-sm">
+                <li
+                  key={item.block.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-line p-3 text-sm"
+                >
                   <p>
                     <span className="font-display text-lg tabular-nums">{formatTime(item.block.startsAt)}</span>{" "}
                     <span className="text-muted">
@@ -291,7 +335,11 @@ export default async function PanelPage({ searchParams }: PageProps<"/panel">) {
                       {item.block.reason ? ` · ${item.block.reason}` : ""}
                     </span>
                   </p>
-                  <ActionButton url={`/api/panel/bloqueos/${item.block.id}`} method="DELETE" className="btn-ghost px-3 py-2 text-sm">
+                  <ActionButton
+                    url={`/api/panel/bloqueos/${item.block.id}`}
+                    method="DELETE"
+                    className="btn-ghost px-3 py-2 text-sm"
+                  >
                     Desbloquear
                   </ActionButton>
                 </li>
@@ -307,7 +355,8 @@ export default async function PanelPage({ searchParams }: PageProps<"/panel">) {
               {cancelled.map((a) => (
                 <li key={a.id}>
                   {formatTime(a.startsAt)} · {a.clientName} · {a.service.name}
-                  {showBarber && ` · ${a.barber.name}`} · {a.cancelReason ? CANCEL_REASON_LABEL[a.cancelReason] : "Cancelado"}
+                  {showBarber && ` · ${a.barber.name}`} ·{" "}
+                  {a.cancelReason ? CANCEL_REASON_LABEL[a.cancelReason] : "Cancelado"}
                 </li>
               ))}
             </ul>
@@ -318,7 +367,13 @@ export default async function PanelPage({ searchParams }: PageProps<"/panel">) {
       {!times ? (
         <p className="card text-sm text-muted">Ese día el local está cerrado: no hay horarios para bloquear.</p>
       ) : blockable.length > 0 ? (
-        <BlockForm key={date} date={date} times={times} barbers={blockable.map(({ id, name }) => ({ id, name }))} allowAll={isAdmin} />
+        <BlockForm
+          key={date}
+          date={date}
+          times={times}
+          barbers={blockable.map(({ id, name }) => ({ id, name }))}
+          allowAll={isAdmin}
+        />
       ) : (
         isAdmin && (
           <p className="card text-sm text-muted">

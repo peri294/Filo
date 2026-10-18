@@ -129,8 +129,8 @@ export function TicketActions({
         <section className="card flex items-start gap-3 border-ok/30" role="status">
           <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-ok" aria-hidden />
           <p className="text-sm">
-            Recibimos tu aviso. Guardamos tu horario unas horas para que el barbero lo confirme por WhatsApp. Si
-            no te responde, volvé a escribirle.
+            Recibimos tu aviso. Guardamos tu horario unas horas para que el barbero lo confirme por WhatsApp. Si no te
+            responde, volvé a escribirle.
           </p>
         </section>
       )}
@@ -180,8 +180,8 @@ export function TicketActions({
         ) : (
           <>
             <p className="text-sm text-muted">
-              Faltan menos de {cancelHours} horas, así que ya no se puede cancelar desde la web. Avisale al barbero
-              por WhatsApp.
+              Faltan menos de {cancelHours} horas, así que ya no se puede cancelar desde la web. Avisale al barbero por
+              WhatsApp.
             </p>
             <a href={contactLink} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">
               <MessageCircle className="size-5 shrink-0" aria-hidden /> Escribir al barbero

@@ -28,7 +28,10 @@ function toWeeklyHours(days: z.infer<typeof dayHoursSchema>[], unit: number): We
     const close = minutesOf(day.close);
     if (close <= open) throw new BookingError(400, `${label}: el cierre tiene que ser posterior a la apertura`);
     if (open % unit !== 0 || close % unit !== 0) {
-      throw new BookingError(400, `${label}: la apertura y el cierre tienen que coincidir con la unidad de agenda de ${unit} minutos`);
+      throw new BookingError(
+        400,
+        `${label}: la apertura y el cierre tienen que coincidir con la unidad de agenda de ${unit} minutos`,
+      );
     }
     hours[day.weekday] = { open: day.open, close: day.close };
   }
@@ -118,7 +121,11 @@ export const serviceSchema = z.object({
     .int("La duración tiene que ser un número entero de minutos")
     .min(1, "La duración tiene que ser mayor a 0")
     .max(600, "La duración máxima es de 600 minutos"),
-  sortOrder: z.number({ error: "El orden tiene que ser un número" }).int("El orden tiene que ser un número entero").min(0).max(999),
+  sortOrder: z
+    .number({ error: "El orden tiene que ser un número" })
+    .int("El orden tiene que ser un número entero")
+    .min(0)
+    .max(999),
   active: z.boolean().optional(),
 });
 
@@ -128,7 +135,10 @@ export type ServiceInput = z.infer<typeof serviceSchema>;
 
 function assertDuration(tenant: Tenant, durationMin: number) {
   if (durationMin % tenant.slotDurationMin !== 0) {
-    throw new BookingError(400, `La duración tiene que ser múltiplo de la unidad de agenda (${tenant.slotDurationMin} minutos)`);
+    throw new BookingError(
+      400,
+      `La duración tiene que ser múltiplo de la unidad de agenda (${tenant.slotDurationMin} minutos)`,
+    );
   }
 }
 
@@ -255,7 +265,13 @@ export async function createBarber(tenant: Tenant, admin: { id: string; barberId
 
   return prisma.$transaction(async (tx) => {
     const barber = await tx.barber.create({
-      data: { tenantId: tenant.id, name: input.name, weeklyHours, sortOrder: input.sortOrder, active: input.active ?? true },
+      data: {
+        tenantId: tenant.id,
+        name: input.name,
+        weeklyHours,
+        sortOrder: input.sortOrder,
+        active: input.active ?? true,
+      },
     });
     if (input.isMe) {
       await tx.staffUser.update({ where: { id: admin.id }, data: { barberId: barber.id } });
@@ -290,13 +306,21 @@ export async function updateBarber(tenant: Tenant, id: string, input: z.infer<ty
 export async function setBarberLogin(tenant: Tenant, id: string, login: z.infer<typeof loginSchema>) {
   const barber = await findBarber(tenant, id);
   if (barber.user) {
-    if (barber.user.role !== "BARBER") throw new BookingError(403, "La clave del admin se cambia desde su propia cuenta");
+    if (barber.user.role !== "BARBER")
+      throw new BookingError(403, "La clave del admin se cambia desde su propia cuenta");
     await setStaffPassword(barber.user.id, login.password);
     return;
   }
   const data = await newStaffLogin(login);
   await prisma.staffUser.create({
-    data: { ...data, name: barber.name, role: "BARBER", tenantId: tenant.id, barberId: barber.id, active: barber.active },
+    data: {
+      ...data,
+      name: barber.name,
+      role: "BARBER",
+      tenantId: tenant.id,
+      barberId: barber.id,
+      active: barber.active,
+    },
   });
 }
 
@@ -305,7 +329,8 @@ export async function deleteBarber(tenant: Tenant, staff: StaffScope, id: string
   const barber = await findBarber(tenant, id);
   if (staff.barberId === id) throw new BookingError(409, "No podés borrarte a vos mismo");
   const count = await prisma.appointment.count({ where: { barberId: id } });
-  if (count > 0) throw new BookingError(409, "Este barbero tiene turnos registrados: no se puede borrar, solo desactivar");
+  if (count > 0)
+    throw new BookingError(409, "Este barbero tiene turnos registrados: no se puede borrar, solo desactivar");
   await prisma.$transaction([
     ...(barber.user ? [prisma.staffUser.delete({ where: { id: barber.user.id } })] : []),
     prisma.barber.delete({ where: { id } }),

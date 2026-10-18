@@ -8,7 +8,7 @@ el dueño decida el merge.
 2. **Trazabilidad:** listar cada `CA-n` de `spec.md` y buscar en `tests/` el o los tests con `[NNN-CA-n]`. Mostrar una
    tabla `CA → test`. Si falta alguno, frenar: se agrega con el proceso `docs/procesos/tdd.md`.
 3. Cambiar el estado a `Implementada` en `spec.md` y en `docs/specs/README.md`.
-4. Correr `npm run check` (typecheck, lint, specs, tests y build). `npm run specs` verifica solo la trazabilidad y los
+4. Correr `npm run check` (formato, typecheck, lint, specs, tests y build). `npm run specs` verifica solo la trazabilidad y los
    estados. Si algo falla, mostrar la salida y no seguir.
 5. Comparar la spec con lo construido. Si difieren, actualizar la spec, o avisar si el que está mal es el código.
 6. Verificar que lo construido no contradiga `docs/constitucion.md`. Si la spec traía una enmienda aprobada,

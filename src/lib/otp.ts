@@ -50,7 +50,7 @@ export async function requestCode(rawPhone: string, purpose: OtpPurpose, ip: str
   }
 
   if (!sendCode) {
-    await sendSms(phone, "Ya tenés una cuenta con este celular. Si no recordás la clave, usá \"Olvidé mi contraseña\".");
+    await sendSms(phone, 'Ya tenés una cuenta con este celular. Si no recordás la clave, usá "Olvidé mi contraseña".');
     return;
   }
 
@@ -81,6 +81,9 @@ export async function verifyCode(phone: string, purpose: OtpPurpose, code: strin
     throw invalid;
   }
   // Marcarlo usado de forma atómica: si dos pedidos llegan juntos, solo uno lo consume.
-  const { count } = await prisma.otpCode.updateMany({ where: { id: otp.id, usedAt: null }, data: { usedAt: new Date() } });
+  const { count } = await prisma.otpCode.updateMany({
+    where: { id: otp.id, usedAt: null },
+    data: { usedAt: new Date() },
+  });
   if (count === 0) throw invalid;
 }

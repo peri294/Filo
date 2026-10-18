@@ -4,7 +4,10 @@ import { handleSameSite } from "@/lib/http";
 
 const schema = z.object({
   phone: z.string().min(1).max(30),
-  code: z.string().trim().regex(/^\d{6}$/, "El código tiene 6 números"),
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "El código tiene 6 números"),
   password: z.string().max(200),
 });
 

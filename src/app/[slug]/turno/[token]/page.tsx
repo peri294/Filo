@@ -127,8 +127,13 @@ export default async function TurnoPage({ params, searchParams }: PageProps<"/[s
         </Link>
       ) : !isOwner ? (
         <section className="card space-y-3">
-          <p className="text-sm text-muted">Para confirmar o cancelar este turno, ingresá con la cuenta con la que lo reservaste.</p>
-          <Link href={`/cuenta/ingresar?volver=${encodeURIComponent(`/${slug}/turno/${token}`)}`} className="btn-primary w-full">
+          <p className="text-sm text-muted">
+            Para confirmar o cancelar este turno, ingresá con la cuenta con la que lo reservaste.
+          </p>
+          <Link
+            href={`/cuenta/ingresar?volver=${encodeURIComponent(`/${slug}/turno/${token}`)}`}
+            className="btn-primary w-full"
+          >
             <LogIn className="size-5" aria-hidden /> Ingresar
           </Link>
         </section>

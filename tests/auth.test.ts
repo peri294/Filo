@@ -134,7 +134,14 @@ describe("recuperación de contraseña", () => {
   it("el personal recupera su clave por su lado, aunque el mismo celular sea cliente", async () => {
     const shop = await makeShop();
     await prisma.staffUser.create({
-      data: { phone: PHONE, passwordHash: await hashPassword("clave-barbero"), name: "Ana", role: "BARBER", tenantId: shop.tenant.id, barberId: shop.ana.id },
+      data: {
+        phone: PHONE,
+        passwordHash: await hashPassword("clave-barbero"),
+        name: "Ana",
+        role: "BARBER",
+        tenantId: shop.tenant.id,
+        barberId: shop.ana.id,
+      },
     });
     await signUp(); // el mismo celular, como cliente
     advance(2);
@@ -147,13 +154,17 @@ describe("recuperación de contraseña", () => {
 
 describe("login del personal", () => {
   it("frena después de 5 intentos fallidos con el mismo celular", async () => {
-    await prisma.staffUser.create({ data: { phone: PHONE, passwordHash: await hashPassword("clave-buena"), name: "X", role: "SUPERADMIN" } });
+    await prisma.staffUser.create({
+      data: { phone: PHONE, passwordHash: await hashPassword("clave-buena"), name: "X", role: "SUPERADMIN" },
+    });
     for (let i = 0; i < 5; i++) expect(await loginStaff(PHONE, "mala", `3.3.3.${i}`)).toMatch(/incorrectos/);
     expect(await loginStaff(PHONE, "clave-buena", "4.4.4.4")).toMatch(/Demasiados intentos/);
   });
 
   it("un ataque desde una IP no bloquea el ingreso del resto del personal", async () => {
-    await prisma.staffUser.create({ data: { phone: PHONE, passwordHash: await hashPassword("clave-buena"), name: "X", role: "SUPERADMIN" } });
+    await prisma.staffUser.create({
+      data: { phone: PHONE, passwordHash: await hashPassword("clave-buena"), name: "X", role: "SUPERADMIN" },
+    });
     // 250 intentos fallidos desde una sola IP, con celulares distintos.
     for (let i = 0; i < 250; i++) await loginStaff(`11 7000-${String(i).padStart(4, "0")}`, "mala", "66.66.66.66");
     expect(await loginStaff("11 7000-9999", "mala", "66.66.66.66")).toMatch(/Demasiados intentos/);
@@ -162,14 +173,22 @@ describe("login del personal", () => {
   });
 
   it("los ingresos correctos no consumen ningún límite", async () => {
-    await prisma.staffUser.create({ data: { phone: PHONE, passwordHash: await hashPassword("clave-buena"), name: "X", role: "SUPERADMIN" } });
+    await prisma.staffUser.create({
+      data: { phone: PHONE, passwordHash: await hashPassword("clave-buena"), name: "X", role: "SUPERADMIN" },
+    });
     for (let i = 0; i < 30; i++) expect(await loginStaff(PHONE, "clave-buena", "10.0.0.8")).toBeNull();
   });
 
   it("con la barbería suspendida, el panel queda bloqueado", async () => {
     const shop = await makeShop();
     await prisma.staffUser.create({
-      data: { phone: PHONE, passwordHash: await hashPassword("clave-buena"), name: "Admin", role: "ADMIN", tenantId: shop.tenant.id },
+      data: {
+        phone: PHONE,
+        passwordHash: await hashPassword("clave-buena"),
+        name: "Admin",
+        role: "ADMIN",
+        tenantId: shop.tenant.id,
+      },
     });
     expect(await loginStaff(PHONE, "clave-buena", "1.1.1.1")).toBeNull();
     expect((await requireStaff(["ADMIN"])).role).toBe("ADMIN");
@@ -182,7 +201,14 @@ describe("login del personal", () => {
   it("un barbero no pasa un chequeo de admin", async () => {
     const shop = await makeShop();
     await prisma.staffUser.create({
-      data: { phone: PHONE, passwordHash: await hashPassword("clave-buena"), name: "Ana", role: "BARBER", tenantId: shop.tenant.id, barberId: shop.ana.id },
+      data: {
+        phone: PHONE,
+        passwordHash: await hashPassword("clave-buena"),
+        name: "Ana",
+        role: "BARBER",
+        tenantId: shop.tenant.id,
+        barberId: shop.ana.id,
+      },
     });
     await loginStaff(PHONE, "clave-buena", "1.1.1.1");
     await expectBookingError(requireStaff(["ADMIN"]), 403);

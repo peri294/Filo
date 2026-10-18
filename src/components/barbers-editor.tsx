@@ -54,7 +54,9 @@ function BarberForm({
     <form onSubmit={submit} className="space-y-3">
       <div className="grid grid-cols-[1fr_6rem] gap-3">
         <div>
-          <label htmlFor={`${prefix}-name`} className="label">Nombre</label>
+          <label htmlFor={`${prefix}-name`} className="label">
+            Nombre
+          </label>
           <input
             id={`${prefix}-name`}
             className="input"
@@ -65,7 +67,9 @@ function BarberForm({
           />
         </div>
         <div>
-          <label htmlFor={`${prefix}-order`} className="label">Orden</label>
+          <label htmlFor={`${prefix}-order`} className="label">
+            Orden
+          </label>
           <input
             id={`${prefix}-order`}
             type="number"
@@ -145,7 +149,9 @@ function AccessForm({ barber, onDone }: { barber: BarberValues; onDone: () => vo
       </p>
       {!hasUser && (
         <div>
-          <label htmlFor={`${prefix}-phone`} className="label">Celular del barbero</label>
+          <label htmlFor={`${prefix}-phone`} className="label">
+            Celular del barbero
+          </label>
           <input
             id={`${prefix}-phone`}
             className="input"
@@ -159,7 +165,9 @@ function AccessForm({ barber, onDone }: { barber: BarberValues; onDone: () => vo
         </div>
       )}
       <div>
-        <label htmlFor={`${prefix}-pass`} className="label">{hasUser ? "Clave nueva" : "Clave inicial"}</label>
+        <label htmlFor={`${prefix}-pass`} className="label">
+          {hasUser ? "Clave nueva" : "Clave inicial"}
+        </label>
         <input
           id={`${prefix}-pass`}
           className="input"
@@ -170,7 +178,9 @@ function AccessForm({ barber, onDone }: { barber: BarberValues; onDone: () => vo
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        <p className="hint">Mínimo 8 caracteres. Pasásela en persona; después la puede cambiar con &quot;Olvidé mi contraseña&quot;.</p>
+        <p className="hint">
+          Mínimo 8 caracteres. Pasásela en persona; después la puede cambiar con &quot;Olvidé mi contraseña&quot;.
+        </p>
       </div>
       <FormMessage error={error} />
       <div className="flex gap-2">
@@ -222,12 +232,17 @@ function BarberItem({ barber, unit, localHours }: { barber: BarberValues; unit: 
       <div className="text-sm">
         <p className="flex flex-wrap items-center gap-2 font-medium">
           {barber.name}
-          {barber.isMe && <span className="rounded-full border border-brass/60 px-2 py-0.5 text-xs text-brass">Vos</span>}
-          {!barber.active && <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">Inactivo</span>}
+          {barber.isMe && (
+            <span className="rounded-full border border-brass/60 px-2 py-0.5 text-xs text-brass">Vos</span>
+          )}
+          {!barber.active && (
+            <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">Inactivo</span>
+          )}
         </p>
         <p className="text-muted">{schedule ? schedule.join(" · ") || "Sin días de atención" : "Horario del local"}</p>
         <p className="text-xs text-muted">
-          {barber.user ? `Entra al panel con +${barber.user.phone}` : "Sin usuario para el panel"} · {barber.appointmentCount} turnos
+          {barber.user ? `Entra al panel con +${barber.user.phone}` : "Sin usuario para el panel"} ·{" "}
+          {barber.appointmentCount} turnos
         </p>
       </div>
       {mode === "access" ? (
@@ -252,7 +267,12 @@ function BarberItem({ barber, unit, localHours }: { barber: BarberValues; unit: 
             {barber.active ? "Dar de baja" : "Reactivar"}
           </ActionButton>
           {barber.appointmentCount === 0 && !barber.isMe && (
-            <ActionButton url={`/api/panel/barberos/${barber.id}`} method="DELETE" className="btn-danger px-3 py-2 text-sm" confirmText="¿Borrar?">
+            <ActionButton
+              url={`/api/panel/barberos/${barber.id}`}
+              method="DELETE"
+              className="btn-danger px-3 py-2 text-sm"
+              confirmText="¿Borrar?"
+            >
               Borrar
             </ActionButton>
           )}
@@ -292,8 +312,8 @@ export function BarbersEditor({
         )}
       </div>
       <p className="text-sm text-muted">
-        Cada barbero tiene su agenda. Los dados de baja no reciben turnos nuevos ni entran al panel; los que tienen turnos
-        no se pueden borrar.
+        Cada barbero tiene su agenda. Los dados de baja no reciben turnos nuevos ni entran al panel; los que tienen
+        turnos no se pueden borrar.
       </p>
 
       {creating && (
@@ -307,7 +327,12 @@ export function BarbersEditor({
               <div className="space-y-3">
                 {canAddMe && (
                   <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" className="size-4 accent-[var(--color-brass)]" checked={isMe} onChange={(e) => setIsMe(e.target.checked)} />
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-[var(--color-brass)]"
+                      checked={isMe}
+                      onChange={(e) => setIsMe(e.target.checked)}
+                    />
                     Soy yo (también atiendo)
                   </label>
                 )}
@@ -325,7 +350,9 @@ export function BarbersEditor({
                     {withLogin && (
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div>
-                          <label htmlFor="new-barber-phone" className="label">Celular</label>
+                          <label htmlFor="new-barber-phone" className="label">
+                            Celular
+                          </label>
                           <input
                             id="new-barber-phone"
                             className="input"
@@ -338,7 +365,9 @@ export function BarbersEditor({
                           />
                         </div>
                         <div>
-                          <label htmlFor="new-barber-pass" className="label">Clave inicial</label>
+                          <label htmlFor="new-barber-pass" className="label">
+                            Clave inicial
+                          </label>
                           <input
                             id="new-barber-pass"
                             className="input"
