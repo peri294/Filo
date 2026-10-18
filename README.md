@@ -132,3 +132,8 @@ aislamiento entre barberías y barberos, login, límites de intentos y flujos de
 - Integración de Mercado Pago (Checkout Pro y reembolsos totales).
 - Migración a Postgres para producción.
 - Revisión legal de los textos de términos y privacidad (hoy son borradores).
+
+## Licencia
+
+Código visible pero **todos los derechos reservados**: ver [`LICENSE`](LICENSE). No se puede copiar, usar ni
+desplegar sin autorización escrita del titular.
