@@ -1,0 +1,6 @@
+description = "Cierra una spec de docs/specs: trazabilidad CA → test, npm run check y documentación al día."
+prompt = """
+Seguí al pie de la letra `docs/procesos/cerrar.md` para la spec: {{args}}
+
+El procedimiento es el mismo para cualquier agente; este archivo solo lo conecta con Gemini CLI.
+"""

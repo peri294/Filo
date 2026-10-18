@@ -23,7 +23,7 @@ Lo que explícitamente **no** se hace en esta spec (para que no crezca sola).
 
 ## Criterios de aceptación
 
-Cada uno con ID estable; el test que lo prueba lleva el ID en su nombre (`it("[CA-1] …")`).
+Cada uno con ID estable; el test que lo prueba lleva el ID en su nombre junto con el número de spec (`it("[NNN-CA-1] …")`).
 
 - **CA-1** — Dado … / Cuando … / Entonces …
 - **CA-2** — Dado … / Cuando … / Entonces …

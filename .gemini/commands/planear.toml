@@ -1,0 +1,6 @@
+description = "Arma plan.md y tareas.md para una spec aprobada de docs/specs, con tareas chicas listas para TDD."
+prompt = """
+Seguí al pie de la letra `docs/procesos/planear.md` para la spec: {{args}}
+
+El procedimiento es el mismo para cualquier agente; este archivo solo lo conecta con Gemini CLI.
+"""

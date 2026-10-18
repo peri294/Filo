@@ -11,7 +11,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build",
+    "specs": "tsx scripts/verificar-specs.ts",
+    "check": "npm run typecheck && npm run lint && npm run specs && npm test && npm run build",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed"
   },

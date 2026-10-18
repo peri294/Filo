@@ -31,30 +31,30 @@ artículo lo dice en "Reglas que toca" y no se aprueba hasta que el dueño enmie
 - Las dudas van a "Preguntas abiertas". **Con preguntas abiertas no se pasa al plan.**
 - Estado de la spec: `Borrador` → `Aprobada` → `Implementada` (o `Descartada`).
 
-Atajo en Claude Code: `/spec <descripción>`.
+Proceso: [`procesos/spec.md`](procesos/spec.md) · atajo `/spec <descripción>`.
 
 ## 2. Planificar (`plan.md` + `tareas.md`)
 
-- El plan dice dónde va cada cosa siguiendo "Dónde está cada cosa" de `CLAUDE.md`: la lógica en `src/lib/*`, las
+- El plan dice dónde va cada cosa siguiendo "Dónde está cada cosa" de `AGENTS.md`: la lógica en `src/lib/*`, las
   rutas de `src/app/api` solo validan con Zod y delegan.
 - Si hay cambios de base: migración de Prisma nueva (nunca editar una migración ya aplicada).
 - `tareas.md` parte el plan en pasos chicos, cada uno con los `CA-*` que cubre y el test que lo prueba. Una tarea
   debería caber en un commit.
 
-Atajo: `/planear 001`.
+Proceso: [`procesos/planear.md`](procesos/planear.md) · atajo `/planear 001`.
 
 ## 3. Implementar cada tarea con TDD
 
 1. 🔴 **Rojo:** escribir el test en `tests/` (nombre que describe el comportamiento, en español, con el ID del
-   criterio: `it("[CA-2] el cliente no puede cancelar con menos de 24 h", …)`). Correrlo y **verlo fallar** por el
+   criterio, con el número de spec: `it("[001-CA-2] el cliente no puede cancelar con menos de 24 h", …)`). Correrlo y **verlo fallar** por el
    motivo esperado (no por un import roto o un typo).
 2. 🟢 **Verde:** el mínimo código que lo hace pasar. Nada de funcionalidad "ya que estoy".
 3. 🔵 **Refactor:** limpiar con los tests en verde. Correr toda la suite.
 4. Marcar la tarea en `tareas.md` y hacer commit.
 
-Para iterar rápido: `npx vitest run tests/archivo.test.ts -t "CA-2"` o `npm run test:watch`.
+Para iterar rápido: `npx vitest run tests/archivo.test.ts -t "001-CA-2"` o `npm run test:watch`.
 
-Atajo: `/tdd 001 T3`.
+Proceso: [`procesos/tdd.md`](procesos/tdd.md) · atajo `/tdd 001 T3`.
 
 ### Qué se testea y cómo
 
@@ -71,13 +71,32 @@ Atajo: `/tdd 001 T3`.
 
 ## 4. Cerrar
 
-- `npm run check` (typecheck + lint + tests + build) en verde.
-- Cada `CA-*` de la spec tiene su test (`npm run test -- -t "CA-"` ayuda a verlos).
+- `npm run check` (typecheck + lint + specs + tests + build) en verde. `npm run specs` controla estados, índice,
+  preguntas abiertas, tareas marcadas y que cada `CA-n` de una spec `Implementada` tenga su test.
 - La spec refleja lo que realmente se construyó; estado → `Implementada`.
 - Si se enmendó la constitución, se sube su versión y se anota en su registro de cambios. Si cambió la ubicación de
-  algo, se actualiza `CLAUDE.md` y/o el `README.md`.
+  algo, se actualiza `AGENTS.md` y/o el `README.md`.
 
-Atajo: `/cerrar 001`.
+Proceso: [`procesos/cerrar.md`](procesos/cerrar.md) · atajo `/cerrar 001`.
+
+## Trabajo entre sesiones y agentes
+
+El flujo no depende de ningún agente: una spec puede empezarla Claude, planearla Gemini y terminarla Grok.
+Para que eso funcione:
+
+- **La guía única es [`AGENTS.md`](../AGENTS.md).** Grok, Codex y la mayoría de los agentes la leen solos; Gemini
+  CLI la carga por `.gemini/settings.json`; Claude Code, por `CLAUDE.md` (que solo la importa). Nada de reglas en
+  archivos de un solo agente.
+- **Los procesos son Markdown común** en [`procesos/`](procesos/). Los atajos (`/spec`, `/planear`, `/tdd`,
+  `/cerrar`) son envoltorios de una línea: `.claude/skills/*` para Claude Code y `.gemini/commands/*.toml` para
+  Gemini CLI. Con cualquier otro agente, se le pide en palabras: *"seguí `docs/procesos/tdd.md` para 001 T2"*.
+- **El estado vive en el repo, no en el chat.** Cada decisión se escribe en la spec, el plan o las tareas. Cada
+  sesión empieza leyendo la **bitácora** de `tareas.md` y termina agregándole una línea (fecha, agente, qué se hizo,
+  qué sigue).
+- **Los chequeos son de máquina.** `npm run check` (con `npm run specs`) falla igual sin importar quién escribió el
+  código, así que ningún agente puede "dar por terminado" algo que no cumple el flujo.
+- **Una sesión, una tarea.** Conviene que cada sesión cierre su tarea con la suite en verde y la bitácora al día;
+  así la siguiente arranca de un punto limpio.
 
 ## Cuándo no hace falta una spec
 

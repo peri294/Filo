@@ -1,6 +1,6 @@
 # Constitución del proyecto
 
-- **Versión:** 1.0.0
+- **Versión:** 1.1.0
 - **Vigente desde:** 2026-10-17
 - **Aprueba enmiendas:** solo el dueño del proyecto.
 
@@ -136,7 +136,10 @@ aprueba una persona, revisando el paquete. Nada se agrega "por las dudas".
 **7.2** **TDD:** cada tarea arranca con un test que falla por la razón correcta. Un bug se arregla escribiendo
 primero el test que lo reproduce.
 
-**7.3** **Trazabilidad:** cada criterio de aceptación `CA-n` tiene al menos un test con `[CA-n]` en el nombre.
+**7.3** **Trazabilidad:** cada criterio de aceptación `CA-n` de la spec `NNN` tiene al menos un test con
+`[NNN-CA-n]` en el nombre (por ejemplo `it("[001-CA-2] …")`). `npm run specs` lo verifica.
+*Por qué:* cada spec numera sus criterios desde `CA-1`; sin el número de spec, el test de una podría pasar por el
+de otra.
 
 **7.4** **No se relaja ni se borra un test para que pase otro.** Si un test choca con una spec, decide el dueño.
 
@@ -169,10 +172,11 @@ se acepta, va en el mismo cambio que la spec.
 parche (1.0.1) si solo se aclara una redacción. Cada cambio se anota abajo.
 
 **9.4** Si cambia una regla, se actualizan en el mismo cambio los tests y la documentación que la reflejan
-(`CLAUDE.md`, `README.md`).
+(`AGENTS.md`, `README.md`).
 
 ## Registro de cambios
 
 | Versión | Fecha | Cambio |
 | --- | --- | --- |
 | 1.0.0 | 2026-10-17 | Primera versión, a partir de las reglas de `CLAUDE.md`, el README y el código. Se fija PostgreSQL para producción. |
+| 1.1.0 | 2026-10-18 | 7.3: el ID de un criterio en los tests lleva el número de spec (`[NNN-CA-n]`). 9.4: la guía de los agentes es `AGENTS.md` (antes `CLAUDE.md`). Aprobado por el dueño. |

@@ -1,0 +1,6 @@
+description = "Crea una spec nueva (SDD) en docs/specs a partir de una idea de funcionalidad, antes de escribir código."
+prompt = """
+Seguí al pie de la letra `docs/procesos/spec.md` para la idea: {{args}}
+
+El procedimiento es el mismo para cualquier agente; este archivo solo lo conecta con Gemini CLI.
+"""

@@ -1,0 +1,6 @@
+description = "Implementa una tarea de docs/specs/NNN-*/tareas.md (o un bug) con el ciclo TDD rojo-verde-refactor."
+prompt = """
+Seguí al pie de la letra `docs/procesos/tdd.md` para la tarea: {{args}}
+
+El procedimiento es el mismo para cualquier agente; este archivo solo lo conecta con Gemini CLI.
+"""
