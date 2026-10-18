@@ -37,7 +37,8 @@ Detalle en [`docs/flujo-de-trabajo.md`](docs/flujo-de-trabajo.md) y [`docs/roles
   `bitacora.md` y `revision.md` (plantillas en `docs/specs/_plantilla/`). Sin spec `Aprobada` y sin preguntas
   abiertas no se escribe código.
 - **Roles aislados:** especificador → planificador → por cada tarea, tester (tests en rojo) → implementador (código
-  en verde) → revisor. Cada sesión toma **un solo rol** y toca solo sus archivos (`docs/roles/permisos.json`).
+  en verde) → revisor. Cada sesión toma **un solo rol** y toca solo sus archivos (`docs/roles/permisos.json`); el
+  tester y el implementador de una tarea son sesiones distintas (constitución 7.7).
 - **Trazabilidad:** cada criterio `CA-n` de la spec `NNN` tiene un test con `[NNN-CA-n]` en el nombre.
 - Una spec que choque con [`docs/constitucion.md`](docs/constitucion.md) no se aprueba sin enmendarla antes (art. 9).
 

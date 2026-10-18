@@ -2,8 +2,8 @@
 
 El trabajo se reparte en roles aislados. **Cada sesión de un agente toma un solo rol**, hace su parte, la deja
 escrita en el repo y frena. La siguiente sesión, del mismo agente o de otro (Claude, Gemini, Grok…), toma el rol que
-sigue. Conviene que el tester y el implementador de una misma tarea sean sesiones distintas, idealmente de agentes
-distintos: así el código no se escribe "a medida" de los tests.
+sigue. El tester y el implementador de una misma tarea **son sesiones distintas** (constitución 7.7), idealmente de
+agentes distintos: así el código no se escribe "a medida" de los tests.
 
 ```
  dueño: idea

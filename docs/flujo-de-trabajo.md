@@ -88,8 +88,8 @@ revisarla Claude de nuevo, en otra sesión. Para que eso funcione:
   `/testear`, `/implementar`, `/revisar`) son envoltorios de una línea: `.claude/skills/*` y `.claude/agents/*`
   (subagentes con contexto limpio) para Claude Code y `.gemini/commands/*.toml` para Gemini CLI. Con cualquier otro
   agente, se le pide en palabras: *"tomá el rol de `docs/roles/tester.md` para 001 T2"*.
-- **Una sesión, un rol.** Conviene que el tester, el implementador y el revisor de una spec sean sesiones distintas,
-  e idealmente agentes distintos.
+- **Una sesión, un rol** (constitución 7.7). El tester y el implementador de una tarea son sesiones distintas; conviene
+  que el revisor también lo sea, e idealmente que sean agentes distintos.
 - **El estado vive en el repo, no en el chat.** Cada decisión se escribe en la spec, el plan, las tareas o la
   revisión. Cada sesión empieza leyendo `bitacora.md` de la spec y termina agregándole una línea (fecha, rol, agente,
   qué se hizo, qué sigue).

@@ -1,6 +1,6 @@
 # Constitución del proyecto
 
-- **Versión:** 1.1.0
+- **Versión:** 1.2.0
 - **Vigente desde:** 2026-10-17
 - **Aprueba enmiendas:** solo el dueño del proyecto.
 
@@ -147,6 +147,13 @@ de otra.
 
 **7.6** Los tests nunca usan la base de desarrollo (`dev.db`) ni la hora real.
 
+**7.7** **Roles aislados.** Cada sesión de un agente toma **un solo rol** (especificador, planificador, tester,
+implementador, revisor o mantenedor) y toca solo los archivos de ese rol (`docs/roles/permisos.json`). **El tester y
+el implementador de una tarea son sesiones distintas.** Cada commit declara su rol, y el hook `commit-msg` y el CI
+rechazan el que no lo hace o toca archivos de otro rol.
+*Por qué:* si el que escribe el código también escribe los tests, los tests terminan acomodándose al código y dejan
+de probar la spec.
+
 ## 8. Decisiones del dueño
 
 Decisiones de negocio ya tomadas. No se rediscuten en una spec: se cambian solo con una enmienda.
@@ -180,3 +187,4 @@ parche (1.0.1) si solo se aclara una redacción. Cada cambio se anota abajo.
 | --- | --- | --- |
 | 1.0.0 | 2026-10-17 | Primera versión, a partir de las reglas de `CLAUDE.md`, el README y el código. Se fija PostgreSQL para producción. |
 | 1.1.0 | 2026-10-18 | 7.3: el ID de un criterio en los tests lleva el número de spec (`[NNN-CA-n]`). 9.4: la guía de los agentes es `AGENTS.md` (antes `CLAUDE.md`). Aprobado por el dueño. |
+| 1.2.0 | 2026-10-18 | 7.7: roles aislados; una sesión, un rol; el tester y el implementador de una tarea son sesiones distintas. Aprobado por el dueño. |
