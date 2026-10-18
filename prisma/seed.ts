@@ -5,7 +5,7 @@ import { normalizePhone } from "../src/lib/format";
 import { hashPassword } from "../src/lib/passwords";
 
 const prisma = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./dev.db" }),
+  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./prisma/dev.db" }),
 });
 
 const services = [

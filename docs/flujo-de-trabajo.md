@@ -58,7 +58,7 @@ Proceso: [`procesos/tdd.md`](procesos/tdd.md) · atajo `/tdd 001 T3`.
 
 ### Qué se testea y cómo
 
-- **Lógica de negocio (`src/lib/*`):** siempre, contra la base de prueba real (`test.db`), con los helpers de
+- **Lógica de negocio (`src/lib/*`):** siempre, contra la base de prueba real (`prisma/test.db`), con los helpers de
   [`tests/fixtures.ts`](../tests/fixtures.ts) (`makeShop`, `makeClient`, `book`, `setNow`, `advance`…).
   Si un caso necesita un helper nuevo, se agrega ahí.
 - **El tiempo se controla:** `vi.useFakeTimers({ toFake: ["Date"] })` + `setNow(AHORA)`. Nunca depender de la hora real.

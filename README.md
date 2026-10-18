@@ -84,9 +84,16 @@ src/
     api/              Route Handlers: [slug], cuenta, panel, superadmin
   components/         formularios y componentes de cliente (wizard de reserva, editor de barberos...)
   lib/                lógica de negocio, auth, OTP, SMS, rate limiting, horarios
-prisma/               schema, migraciones y seed
+prisma/               schema, migraciones, seed y las bases SQLite locales (dev.db, test.db; ignoradas)
 tests/                tests de integración (Vitest) contra una base SQLite aparte
+scripts/              herramientas del repo (verificar-specs.ts: trazabilidad de las specs)
+docs/                 constitución, flujo de trabajo, procesos, specs e históricos
+.claude/ .gemini/     atajos de cada agente; la guía común está en AGENTS.md
 ```
+
+En la raíz quedan solo los archivos que las herramientas buscan ahí: `package.json`, configuraciones de Next,
+TypeScript, ESLint, PostCSS, Prisma y Vitest, `.env.example`, `.mcp.json` y las guías de agentes (`AGENTS.md`,
+`CLAUDE.md`, `GEMINI.md`).
 
 ## Cómo correrlo
 
@@ -107,10 +114,9 @@ Sin credenciales de Twilio, los códigos SMS se muestran en la consola del servi
 ## Tests y calidad
 
 ```bash
-npm test            # 68 tests de integración (Vitest) sobre test.db, que se recrea en cada corrida
-npm run typecheck
-npm run lint
-npm run build
+npm run check       # todo junto: typecheck + lint + specs + tests + build
+npm test            # tests de integración (Vitest) sobre prisma/test.db, que se recrea en cada corrida
+npm run specs       # trazabilidad de docs/specs (cada criterio con su test)
 ```
 
 Los tests cubren reservas concurrentes y dobles, asignación de "el primero disponible", vencimientos, cancelaciones,

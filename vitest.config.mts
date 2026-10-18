@@ -11,7 +11,7 @@ export default defineConfig({
     environment: "node",
     env: { DATABASE_URL: TEST_DATABASE_URL },
     globalSetup: ["tests/global-setup.ts"],
-    // Los tests de base comparten test.db: un archivo por vez.
+    // Los tests de base comparten prisma/test.db: un archivo por vez.
     fileParallelism: false,
   },
 });
