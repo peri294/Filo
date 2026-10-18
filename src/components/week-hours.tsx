@@ -20,7 +20,11 @@ export function weekRowsFrom(weeklyHours: string | null, fallback = { open: "09:
 
 /** Lo que espera la API: solo los días abiertos, cada uno con su horario. */
 export function weekRowsPayload(rows: WeekRows) {
-  return WEEK.filter((d) => rows[d.value].open).map((d) => ({ weekday: d.value, open: rows[d.value].from, close: rows[d.value].to }));
+  return WEEK.filter((d) => rows[d.value].open).map((d) => ({
+    weekday: d.value,
+    open: rows[d.value].from,
+    close: rows[d.value].to,
+  }));
 }
 
 /** Una fila por día: abierto o cerrado, apertura y cierre, y copiar el horario a los demás días. */
@@ -40,7 +44,9 @@ export function WeekHoursFields({
   const update = (day: number, patch: Partial<DayRow>) => onChange({ ...value, [day]: { ...value[day], ...patch } });
   const copyToOpenDays = (day: number) => {
     const { from, to } = value[day];
-    onChange(Object.fromEntries(Object.entries(value).map(([k, d]) => [k, d.open ? { ...d, from, to } : d])) as WeekRows);
+    onChange(
+      Object.fromEntries(Object.entries(value).map(([k, d]) => [k, d.open ? { ...d, from, to } : d])) as WeekRows,
+    );
   };
 
   return (

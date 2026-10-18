@@ -8,7 +8,11 @@ import { LogoutButton } from "@/components/auth-forms";
 import { CreateTenantForm, ResetAdminPassword } from "@/components/superadmin-forms";
 import { pageMetadata } from "../../seo";
 
-export const metadata = pageMetadata({ title: "Superadmin", description: "Administración de barberías.", noIndex: true });
+export const metadata = pageMetadata({
+  title: "Superadmin",
+  description: "Administración de barberías.",
+  noIndex: true,
+});
 
 export default async function SuperadminPage() {
   const user = await getCurrentStaff();
@@ -40,7 +44,11 @@ export default async function SuperadminPage() {
                   <div className="text-sm">
                     <p className="flex flex-wrap items-center gap-2 font-medium">
                       {t.name}
-                      {!t.active && <span className="rounded-full border border-bad/50 px-2 py-0.5 text-xs text-bad">Suspendida</span>}
+                      {!t.active && (
+                        <span className="rounded-full border border-bad/50 px-2 py-0.5 text-xs text-bad">
+                          Suspendida
+                        </span>
+                      )}
                     </p>
                     <p className="text-muted">
                       /{t.slug} · {t._count.barbers} barberos · {t._count.appointments} turnos

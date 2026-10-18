@@ -26,7 +26,8 @@ export async function verifyPassword(password: string, stored: string) {
 
 /** Devuelve el problema de la contraseña, o null si sirve. */
 export function passwordProblem(password: string) {
-  if (password.length < MIN_PASSWORD_LENGTH) return `La contraseña tiene que tener al menos ${MIN_PASSWORD_LENGTH} caracteres`;
+  if (password.length < MIN_PASSWORD_LENGTH)
+    return `La contraseña tiene que tener al menos ${MIN_PASSWORD_LENGTH} caracteres`;
   if (password.length > 200) return "La contraseña es demasiado larga";
   return null;
 }

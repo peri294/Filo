@@ -82,11 +82,15 @@ export function SettingsForm({ settings }: { settings: SettingsValues }) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label htmlFor="name" className="label">Nombre</label>
+          <label htmlFor="name" className="label">
+            Nombre
+          </label>
           <input id="name" className="input" value={form.name} onChange={set("name")} maxLength={80} required />
         </div>
         <div className="sm:col-span-2">
-          <label htmlFor="address" className="label">Dirección</label>
+          <label htmlFor="address" className="label">
+            Dirección
+          </label>
           <input
             id="address"
             className="input"
@@ -97,7 +101,9 @@ export function SettingsForm({ settings }: { settings: SettingsValues }) {
           />
         </div>
         <div className="sm:col-span-2">
-          <label htmlFor="whatsapp" className="label">WhatsApp del local</label>
+          <label htmlFor="whatsapp" className="label">
+            WhatsApp del local
+          </label>
           <input
             id="whatsapp"
             className="input"
@@ -108,15 +114,25 @@ export function SettingsForm({ settings }: { settings: SettingsValues }) {
             placeholder="11 2345 6789"
             required
           />
-          <p className="mt-1 text-xs text-muted">Recibe las confirmaciones de los turnos en efectivo. Con código de área.</p>
+          <p className="mt-1 text-xs text-muted">
+            Recibe las confirmaciones de los turnos en efectivo. Con código de área.
+          </p>
         </div>
       </div>
 
-      <WeekHoursFields value={days} onChange={setDays} unit={unit} legend="Días y horarios de atención" idPrefix="local" />
+      <WeekHoursFields
+        value={days}
+        onChange={setDays}
+        unit={unit}
+        legend="Días y horarios de atención"
+        idPrefix="local"
+      />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
-          <label htmlFor="slotDurationMin" className="label">Unidad de agenda (min)</label>
+          <label htmlFor="slotDurationMin" className="label">
+            Unidad de agenda (min)
+          </label>
           <input
             id="slotDurationMin"
             type="number"
@@ -131,7 +147,9 @@ export function SettingsForm({ settings }: { settings: SettingsValues }) {
           />
         </div>
         <div>
-          <label htmlFor="bookingWindowDays" className="label">Reservas hasta (días)</label>
+          <label htmlFor="bookingWindowDays" className="label">
+            Reservas hasta (días)
+          </label>
           <input
             id="bookingWindowDays"
             type="number"
@@ -145,7 +163,9 @@ export function SettingsForm({ settings }: { settings: SettingsValues }) {
           />
         </div>
         <div>
-          <label htmlFor="minNoticeMin" className="label">Anticipación mínima (min)</label>
+          <label htmlFor="minNoticeMin" className="label">
+            Anticipación mínima (min)
+          </label>
           <input
             id="minNoticeMin"
             type="number"
@@ -219,11 +239,22 @@ function ServiceForm({
   return (
     <form onSubmit={submit} className="space-y-3">
       <div>
-        <label htmlFor={`${prefix}-name`} className="label">Nombre</label>
-        <input id={`${prefix}-name`} className="input" value={draft.name} onChange={set("name")} maxLength={60} required />
+        <label htmlFor={`${prefix}-name`} className="label">
+          Nombre
+        </label>
+        <input
+          id={`${prefix}-name`}
+          className="input"
+          value={draft.name}
+          onChange={set("name")}
+          maxLength={60}
+          required
+        />
       </div>
       <div>
-        <label htmlFor={`${prefix}-desc`} className="label">Descripción (opcional)</label>
+        <label htmlFor={`${prefix}-desc`} className="label">
+          Descripción (opcional)
+        </label>
         <textarea
           id={`${prefix}-desc`}
           className="input min-h-20"
@@ -234,7 +265,9 @@ function ServiceForm({
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label htmlFor={`${prefix}-price`} className="label">Precio ($)</label>
+          <label htmlFor={`${prefix}-price`} className="label">
+            Precio ($)
+          </label>
           <input
             id={`${prefix}-price`}
             type="number"
@@ -248,7 +281,9 @@ function ServiceForm({
           />
         </div>
         <div>
-          <label htmlFor={`${prefix}-dur`} className="label">Duración (min)</label>
+          <label htmlFor={`${prefix}-dur`} className="label">
+            Duración (min)
+          </label>
           <input
             id={`${prefix}-dur`}
             type="number"
@@ -262,7 +297,9 @@ function ServiceForm({
           />
         </div>
         <div>
-          <label htmlFor={`${prefix}-order`} className="label">Orden</label>
+          <label htmlFor={`${prefix}-order`} className="label">
+            Orden
+          </label>
           <input
             id={`${prefix}-order`}
             type="number"
@@ -338,7 +375,9 @@ function ServiceItem({ service, unit }: { service: ServiceValues; unit: number }
       <div className="text-sm">
         <p className="flex flex-wrap items-center gap-2 font-medium">
           {service.name}
-          {!service.active && <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">Inactivo</span>}
+          {!service.active && (
+            <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">Inactivo</span>
+          )}
         </p>
         <p className="text-muted">
           {formatPrice(service.price)} ·{service.durationMin} min · orden {service.sortOrder}

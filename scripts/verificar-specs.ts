@@ -68,7 +68,8 @@ export function verificarSpecs(raiz: string): string[] {
     const criterios = [...new Set([...spec.matchAll(/\*\*(CA-\d+)\*\*/g)].map((m) => m[1]))];
     for (const ca of criterios) {
       const id = `${numero}-${ca}`;
-      if (!tests.includes(`[${id}]`)) errores.push(`${carpeta}: ${ca} no tiene ningún test con "[${id}]" en el nombre.`);
+      if (!tests.includes(`[${id}]`))
+        errores.push(`${carpeta}: ${ca} no tiene ningún test con "[${id}]" en el nombre.`);
     }
   }
   return errores;

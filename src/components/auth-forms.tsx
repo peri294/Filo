@@ -27,7 +27,15 @@ function FormError({ error }: { error: string | null }) {
   );
 }
 
-function PhoneField({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+function PhoneField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
   return (
     <div>
       <label htmlFor="phone" className="label">
@@ -212,7 +220,11 @@ export function RegisterForm({ redirectTo, loginHref }: { redirectTo: string; lo
         <>
           <FormError error={code.error} />
           <button type="submit" className="btn-primary w-full" disabled={code.busy}>
-            {code.busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <MessageSquareText className="size-4" aria-hidden />}
+            {code.busy ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <MessageSquareText className="size-4" aria-hidden />
+            )}
             Enviarme el código
           </button>
         </>
@@ -264,7 +276,11 @@ export function RegisterForm({ redirectTo, loginHref }: { redirectTo: string; lo
           </label>
           <FormError error={error} />
           <button type="submit" className="btn-primary w-full" disabled={busy}>
-            {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <UserPlus className="size-4" aria-hidden />}
+            {busy ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <UserPlus className="size-4" aria-hidden />
+            )}
             Crear cuenta
           </button>
         </>
@@ -319,7 +335,11 @@ export function RecoverForm({
         <>
           <FormError error={code.error} />
           <button type="submit" className="btn-primary w-full" disabled={code.busy}>
-            {code.busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <MessageSquareText className="size-4" aria-hidden />}
+            {code.busy ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <MessageSquareText className="size-4" aria-hidden />
+            )}
             Enviarme el código
           </button>
         </>
@@ -335,7 +355,11 @@ export function RecoverForm({
           <PasswordField id="new-password" label="Contraseña nueva" value={password} onChange={setPassword} isNew />
           <FormError error={error} />
           <button type="submit" className="btn-primary w-full" disabled={busy}>
-            {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <KeyRound className="size-4" aria-hidden />}
+            {busy ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <KeyRound className="size-4" aria-hidden />
+            )}
             Cambiar contraseña
           </button>
         </>
@@ -345,7 +369,15 @@ export function RecoverForm({
 }
 
 /** Botón de salir para cualquier tipo de sesión. */
-export function LogoutButton({ endpoint, redirectTo, className }: { endpoint: string; redirectTo: string; className?: string }) {
+export function LogoutButton({
+  endpoint,
+  redirectTo,
+  className,
+}: {
+  endpoint: string;
+  redirectTo: string;
+  className?: string;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   return (

@@ -48,7 +48,9 @@ export function CreateTenantForm() {
 
   const field = (key: keyof typeof EMPTY, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <div>
-      <label htmlFor={`t-${key}`} className="label">{label}</label>
+      <label htmlFor={`t-${key}`} className="label">
+        {label}
+      </label>
       <input id={`t-${key}`} className="input" value={form[key]} onChange={set(key)} required {...props} />
     </div>
   );
@@ -61,7 +63,9 @@ export function CreateTenantForm() {
       <div className="grid gap-3 sm:grid-cols-2">
         {field("name", "Nombre de la barbería", { maxLength: 80 })}
         <div>
-          <label htmlFor="t-slug" className="label">Dirección web</label>
+          <label htmlFor="t-slug" className="label">
+            Dirección web
+          </label>
           <div className="flex items-center gap-1">
             <span className="text-sm text-muted">/</span>
             <input
@@ -81,7 +85,11 @@ export function CreateTenantForm() {
         {field("whatsapp", "WhatsApp del local", { type: "tel", inputMode: "tel", placeholder: "11 2345 6789" })}
         {field("adminName", "Nombre del admin", { maxLength: 60 })}
         {field("adminPhone", "Celular del admin", { type: "tel", inputMode: "tel", placeholder: "11 2345 6789" })}
-        {field("adminPassword", "Clave inicial del admin", { type: "password", autoComplete: "new-password", minLength: 8 })}
+        {field("adminPassword", "Clave inicial del admin", {
+          type: "password",
+          autoComplete: "new-password",
+          minLength: 8,
+        })}
       </div>
       <FormMessage error={error} ok={ok} />
       <button type="submit" className="btn-primary w-full sm:w-auto" disabled={busy}>
@@ -122,7 +130,9 @@ export function ResetAdminPassword({ tenantId }: { tenantId: string }) {
       }}
     >
       <div className="min-w-48 flex-1">
-        <label htmlFor={`reset-${tenantId}`} className="label">Clave nueva del admin</label>
+        <label htmlFor={`reset-${tenantId}`} className="label">
+          Clave nueva del admin
+        </label>
         <input
           id={`reset-${tenantId}`}
           className="input"

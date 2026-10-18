@@ -10,12 +10,21 @@ const prisma = new PrismaClient({
 
 const services = [
   { name: "Corte clásico", description: "Corte a tijera o máquina, lavado y peinado.", price: 12000, durationMin: 30 },
-  { name: "Corte + Barba", description: "Corte completo más perfilado y arreglo de barba.", price: 17000, durationMin: 60 },
+  {
+    name: "Corte + Barba",
+    description: "Corte completo más perfilado y arreglo de barba.",
+    price: 17000,
+    durationMin: 60,
+  },
   { name: "Perfilado de barba", description: "Perfilado con navaja y toalla caliente.", price: 8000, durationMin: 30 },
   { name: "Corte infantil", description: "Para chicos hasta 12 años.", price: 10000, durationMin: 30 },
 ];
 
-async function upsertStaff(phone: string, password: string, data: { name: string; role: string; tenantId?: string; barberId?: string }) {
+async function upsertStaff(
+  phone: string,
+  password: string,
+  data: { name: string; role: string; tenantId?: string; barberId?: string },
+) {
   const existing = await prisma.staffUser.findUnique({ where: { phone } });
   if (existing) return existing;
   return prisma.staffUser.create({ data: { phone, passwordHash: await hashPassword(password), ...data } });
@@ -46,12 +55,28 @@ async function main() {
       tenantId: tenant.id,
       name: "Lucas",
       sortOrder: 1,
-      weeklyHours: JSON.stringify({ 2: ["09:00", "20:00"], 3: ["09:00", "20:00"], 4: ["09:00", "20:00"], 5: ["09:00", "20:00"], 6: ["09:00", "14:00"] }),
+      weeklyHours: JSON.stringify({
+        2: ["09:00", "20:00"],
+        3: ["09:00", "20:00"],
+        4: ["09:00", "20:00"],
+        5: ["09:00", "20:00"],
+        6: ["09:00", "14:00"],
+      }),
     },
   });
   // Claves de demo, solo para desarrollo.
-  await upsertStaff("5491111111111", "demo-admin-1", { name: "Juan (admin)", role: "ADMIN", tenantId: tenant.id, barberId: juan.id });
-  await upsertStaff("5491122222222", "demo-barbero-1", { name: "Lucas", role: "BARBER", tenantId: tenant.id, barberId: lucas.id });
+  await upsertStaff("5491111111111", "demo-admin-1", {
+    name: "Juan (admin)",
+    role: "ADMIN",
+    tenantId: tenant.id,
+    barberId: juan.id,
+  });
+  await upsertStaff("5491122222222", "demo-barbero-1", {
+    name: "Lucas",
+    role: "BARBER",
+    tenantId: tenant.id,
+    barberId: lucas.id,
+  });
   if (!(await prisma.client.findUnique({ where: { phone: "5491133333333" } }))) {
     const now = new Date();
     await prisma.client.create({

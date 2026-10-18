@@ -5,13 +5,7 @@ import Link from "next/link";
 import { RotateCcw, TriangleAlert } from "lucide-react";
 import { StatusScreen } from "@/components/status-screen";
 
-export default function ErrorPage({
-  error,
-  retry,
-}: {
-  error: Error & { digest?: string };
-  retry: () => void;
-}) {
+export default function ErrorPage({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
     console.error(error);
   }, [error]);

@@ -108,7 +108,10 @@ describe("días y disponibilidad", () => {
     expect(slots[0].time).toBe("11:00");
     await expectBookingError(book(shop.tenant, { serviceId: shop.corte, barberId: shop.ana.id, time: "10:15" }), 400);
     await expectBookingError(book(shop.tenant, { serviceId: shop.combo, barberId: shop.ana.id, time: "19:30" }), 400);
-    await expectBookingError(book(shop.tenant, { serviceId: shop.corte, barberId: shop.ana.id, paymentMethod: "MERCADOPAGO" }), 400);
+    await expectBookingError(
+      book(shop.tenant, { serviceId: shop.corte, barberId: shop.ana.id, paymentMethod: "MERCADOPAGO" }),
+      400,
+    );
   });
 
   it("un servicio de otra barbería no se puede usar", async () => {
@@ -127,7 +130,7 @@ describe("agenda por barbero", () => {
     expect((await slotsOf(shop.tenant, MIERCOLES, shop.corte, ANY_BARBER))["10:00"]).toBe(false);
   });
 
-  it("\"El primero disponible\" asigna al barbero libre y con menos turnos", async () => {
+  it('"El primero disponible" asigna al barbero libre y con menos turnos', async () => {
     await book(shop.tenant, { serviceId: shop.corte, barberId: shop.ana.id, time: "15:00" });
     expect((await slotsOf(shop.tenant, MIERCOLES, shop.corte, ANY_BARBER))["15:00"]).toBe(true);
     const libre = await book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER, time: "15:00" });
@@ -136,12 +139,14 @@ describe("agenda por barbero", () => {
     expect(otro.barberId).toBe(shop.ana.id); // empatados en cantidad: el primero en orden
   });
 
-  it("dos reservas \"cualquiera\" simultáneas van a barberos distintos", async () => {
+  it('dos reservas "cualquiera" simultáneas van a barberos distintos', async () => {
     const results = await Promise.allSettled([
       book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER }),
       book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER }),
     ]);
-    const ok = results.filter((r) => r.status === "fulfilled").map((r) => (r as PromiseFulfilledResult<{ barberId: string }>).value);
+    const ok = results
+      .filter((r) => r.status === "fulfilled")
+      .map((r) => (r as PromiseFulfilledResult<{ barberId: string }>).value);
     expect(ok).toHaveLength(2);
     expect(new Set(ok.map((a) => a.barberId)).size).toBe(2);
   });
@@ -182,7 +187,10 @@ describe("anti-spam", () => {
   it("un turno activo por cliente en cada barbería, pero puede reservar en otra", async () => {
     const client = await makeClient();
     await book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER }, { client });
-    await expectBookingError(book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER, time: "15:00" }, { client }), 409);
+    await expectBookingError(
+      book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER, time: "15:00" }, { client }),
+      409,
+    );
     const otra = await makeShop("dos");
     await expect(book(otra.tenant, { serviceId: otra.corte, barberId: ANY_BARBER }, { client })).resolves.toBeTruthy();
   });
@@ -203,14 +211,19 @@ describe("anti-spam", () => {
     const otro = await book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER, time: "11:00" }, { client });
     await adminConfirm(adminOf(shop), otro.id);
     setNow(zonedInstant(MIERCOLES, "12:00"));
-    await expect(book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER, date: "2026-10-08" }, { client })).resolves.toBeTruthy();
+    await expect(
+      book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER, date: "2026-10-08" }, { client }),
+    ).resolves.toBeTruthy();
   });
 
   it("máximo 3 reservas por hora desde la misma IP", async () => {
     for (const time of ["10:00", "11:00", "12:00"]) {
       await book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER, time }, { ip: "9.9.9.9" });
     }
-    await expectBookingError(book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER, time: "13:00" }, { ip: "9.9.9.9" }), 429);
+    await expectBookingError(
+      book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER, time: "13:00" }, { ip: "9.9.9.9" }),
+      429,
+    );
   });
 });
 
@@ -242,7 +255,7 @@ describe("vencimiento y aviso por WhatsApp", () => {
   });
 });
 
-describe("cancelación y \"Mis turnos\" del cliente", () => {
+describe('cancelación y "Mis turnos" del cliente', () => {
   it("cancela con más de 24 h; con menos no; un turno ajeno da 404", async () => {
     const client = await makeClient();
     const lejos = await book(shop.tenant, { serviceId: shop.corte, barberId: ANY_BARBER }, { client });
@@ -287,7 +300,10 @@ describe("panel: permisos y aislamiento", () => {
   it("el superadmin no gestiona agendas", async () => {
     const appt = await book(shop.tenant, { serviceId: shop.corte, barberId: shop.ana.id });
     await expectBookingError(adminConfirm({ role: "SUPERADMIN", tenantId: null, barberId: null }, appt.id), 404);
-    await expectBookingError(getAgenda({ role: "SUPERADMIN", tenantId: null, barberId: null }, shop.tenant, MIERCOLES), 403);
+    await expectBookingError(
+      getAgenda({ role: "SUPERADMIN", tenantId: null, barberId: null }, shop.tenant, MIERCOLES),
+      403,
+    );
   });
 
   it("no se puede rechazar un turno confirmado", async () => {
@@ -303,7 +319,9 @@ describe("panel: permisos y aislamiento", () => {
     expect((await getAgenda(adminOf(shop), shop.tenant, MIERCOLES)).appointments).toHaveLength(2);
     expect((await getAgenda(adminOf(shop), shop.tenant, MIERCOLES, shop.beto.id)).appointments).toHaveLength(1);
     // Un barbero no puede ver la agenda de otro aunque lo pida.
-    expect((await getAgenda(barberOf(shop, shop.ana), shop.tenant, MIERCOLES, shop.beto.id)).appointments[0].barberId).toBe(shop.ana.id);
+    expect(
+      (await getAgenda(barberOf(shop, shop.ana), shop.tenant, MIERCOLES, shop.beto.id)).appointments[0].barberId,
+    ).toBe(shop.ana.id);
   });
 
   it("asistencia: solo turnos confirmados que ya empezaron", async () => {
@@ -320,27 +338,77 @@ describe("panel: permisos y aislamiento", () => {
 
 describe("bloqueos", () => {
   it("el admin bloquea a todos; si alguno tiene un turno en el rango, no se bloquea a nadie", async () => {
-    await createBlock(adminOf(shop), shop.tenant, { barberId: ANY_BARBER, date: MIERCOLES, from: "12:00", to: "13:00" });
+    await createBlock(adminOf(shop), shop.tenant, {
+      barberId: ANY_BARBER,
+      date: MIERCOLES,
+      from: "12:00",
+      to: "13:00",
+    });
     expect(await prisma.blockedSlot.count()).toBe(2);
     expect((await slotsOf(shop.tenant, MIERCOLES, shop.corte, ANY_BARBER))["12:00"]).toBe(false);
 
     await book(shop.tenant, { serviceId: shop.corte, barberId: shop.beto.id, time: "15:00" });
-    await expectBookingError(createBlock(adminOf(shop), shop.tenant, { barberId: ANY_BARBER, date: MIERCOLES, from: "15:00", to: "16:00" }), 409);
+    await expectBookingError(
+      createBlock(adminOf(shop), shop.tenant, { barberId: ANY_BARBER, date: MIERCOLES, from: "15:00", to: "16:00" }),
+      409,
+    );
     expect(await prisma.blockedSlot.count()).toBe(2);
   });
 
   it("el barbero bloquea solo su agenda y dentro de su horario", async () => {
-    await expectBookingError(createBlock(barberOf(shop, shop.ana), shop.tenant, { barberId: ANY_BARBER, date: MIERCOLES, from: "12:00", to: "13:00" }), 403);
-    await expectBookingError(createBlock(barberOf(shop, shop.ana), shop.tenant, { barberId: shop.beto.id, date: MIERCOLES, from: "12:00", to: "13:00" }), 404);
-    await expectBookingError(createBlock(barberOf(shop, shop.ana), shop.tenant, { barberId: shop.ana.id, date: MIERCOLES, from: "08:00", to: "10:00" }), 400);
-    await expectBookingError(createBlock(barberOf(shop, shop.ana), shop.tenant, { barberId: shop.ana.id, date: DOMINGO, from: "10:00", to: "11:00" }), 400);
-    await createBlock(barberOf(shop, shop.ana), shop.tenant, { barberId: shop.ana.id, date: MIERCOLES, from: "12:00", to: "13:00" });
+    await expectBookingError(
+      createBlock(barberOf(shop, shop.ana), shop.tenant, {
+        barberId: ANY_BARBER,
+        date: MIERCOLES,
+        from: "12:00",
+        to: "13:00",
+      }),
+      403,
+    );
+    await expectBookingError(
+      createBlock(barberOf(shop, shop.ana), shop.tenant, {
+        barberId: shop.beto.id,
+        date: MIERCOLES,
+        from: "12:00",
+        to: "13:00",
+      }),
+      404,
+    );
+    await expectBookingError(
+      createBlock(barberOf(shop, shop.ana), shop.tenant, {
+        barberId: shop.ana.id,
+        date: MIERCOLES,
+        from: "08:00",
+        to: "10:00",
+      }),
+      400,
+    );
+    await expectBookingError(
+      createBlock(barberOf(shop, shop.ana), shop.tenant, {
+        barberId: shop.ana.id,
+        date: DOMINGO,
+        from: "10:00",
+        to: "11:00",
+      }),
+      400,
+    );
+    await createBlock(barberOf(shop, shop.ana), shop.tenant, {
+      barberId: shop.ana.id,
+      date: MIERCOLES,
+      from: "12:00",
+      to: "13:00",
+    });
     expect((await slotsOf(shop.tenant, MIERCOLES, shop.corte, shop.ana.id))["12:00"]).toBe(false);
     expect((await slotsOf(shop.tenant, MIERCOLES, shop.corte, shop.beto.id))["12:00"]).toBe(true);
   });
 
   it("desbloquear: solo quien puede gestionar ese barbero", async () => {
-    await createBlock(adminOf(shop), shop.tenant, { barberId: shop.ana.id, date: MIERCOLES, from: "12:00", to: "13:00" });
+    await createBlock(adminOf(shop), shop.tenant, {
+      barberId: shop.ana.id,
+      date: MIERCOLES,
+      from: "12:00",
+      to: "13:00",
+    });
     const block = await prisma.blockedSlot.findFirstOrThrow();
     const otra = await makeShop("dos");
     await expectBookingError(deleteBlock(adminOf(otra), block.id), 404);
@@ -361,7 +429,10 @@ describe("configuración", () => {
     expect(sabado.slots[0].time).toBe("10:00");
     expect(sabado.slots.at(-1)!.time).toBe("13:30");
     await expectBookingError(
-      updateSettings(shop.tenant, { ...settingsOf(shop), weeklyHours: [{ weekday: 6, open: "14:00", close: "10:00" }] }),
+      updateSettings(shop.tenant, {
+        ...settingsOf(shop),
+        weeklyHours: [{ weekday: 6, open: "14:00", close: "10:00" }],
+      }),
       400,
     );
   });
@@ -392,7 +463,12 @@ describe("configuración", () => {
     const user = await prisma.staffUser.findUniqueOrThrow({ where: { barberId: carla.id } });
     expect(user).toMatchObject({ role: "BARBER", tenantId: shop.tenant.id, phone: "5491150000001" });
     await expectBookingError(
-      createBarber(shop.tenant, admin, { name: "Otro", weeklyHours: null, sortOrder: 3, login: { phone: "11 5000-0001", password: "clave-segura" } }),
+      createBarber(shop.tenant, admin, {
+        name: "Otro",
+        weeklyHours: null,
+        sortOrder: 3,
+        login: { phone: "11 5000-0001", password: "clave-segura" },
+      }),
       409,
     );
     // El admin también atiende.
@@ -411,11 +487,19 @@ describe("métricas", () => {
   it("cuenta turnos, ingresos, ausencias, cancelaciones y clientes nuevos o recurrentes", async () => {
     const habitual = await makeClient();
     // Turno anterior al período: hace que "habitual" sea recurrente.
-    const viejo = await book(shop.tenant, { serviceId: shop.corte, barberId: shop.ana.id, date: LUNES, time: "10:00" }, { client: habitual });
+    const viejo = await book(
+      shop.tenant,
+      { serviceId: shop.corte, barberId: shop.ana.id, date: LUNES, time: "10:00" },
+      { client: habitual },
+    );
     await adminConfirm(adminOf(shop), viejo.id);
 
     setNow(zonedInstant(LUNES, "12:00"));
-    const a = await book(shop.tenant, { serviceId: shop.combo, barberId: shop.ana.id, time: "10:00" }, { client: habitual });
+    const a = await book(
+      shop.tenant,
+      { serviceId: shop.combo, barberId: shop.ana.id, time: "10:00" },
+      { client: habitual },
+    );
     const b = await book(shop.tenant, { serviceId: shop.corte, barberId: shop.beto.id, time: "10:00" });
     const c = await book(shop.tenant, { serviceId: shop.corte, barberId: shop.beto.id, time: "11:00" });
     await book(shop.tenant, { serviceId: shop.corte, barberId: shop.beto.id, time: "12:00" }); // vence: no cuenta
@@ -445,7 +529,14 @@ describe("métricas", () => {
 });
 
 describe("superadmin", () => {
-  const nueva = { name: "Nueva", slug: "nueva", whatsapp: "11 2222-3333", adminName: "Dueño", adminPhone: "11 2222-4444", adminPassword: "clave-segura" };
+  const nueva = {
+    name: "Nueva",
+    slug: "nueva",
+    whatsapp: "11 2222-3333",
+    adminName: "Dueño",
+    adminPhone: "11 2222-4444",
+    adminPassword: "clave-segura",
+  };
 
   it("crea la barbería con su admin; valida la dirección", async () => {
     const t = await createTenant(nueva);

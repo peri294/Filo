@@ -1,7 +1,10 @@
 import { BRAND_NAME } from "@/lib/brand";
 import { pageMetadata } from "../../seo";
 
-export const metadata = pageMetadata({ title: "Política de privacidad", description: `Cómo usa ${BRAND_NAME} tus datos.` });
+export const metadata = pageMetadata({
+  title: "Política de privacidad",
+  description: `Cómo usa ${BRAND_NAME} tus datos.`,
+});
 
 // BORRADOR: este texto es una base y tiene que revisarlo un abogado antes de publicar el sitio.
 export default function PrivacidadPage() {
@@ -21,13 +24,13 @@ export default function PrivacidadPage() {
       </p>
       <h2 className="font-semibold">Con quién los compartimos</h2>
       <p>
-        Solo con las barberías donde reservás y con los proveedores que necesitamos para funcionar (hosting, base de datos
-        y envío de SMS). No vendemos tus datos.
+        Solo con las barberías donde reservás y con los proveedores que necesitamos para funcionar (hosting, base de
+        datos y envío de SMS). No vendemos tus datos.
       </p>
       <h2 className="font-semibold">Tus derechos</h2>
       <p>
-        Según la Ley 25.326 de Protección de Datos Personales podés pedir acceso, rectificación o eliminación de tus datos.
-        La Agencia de Acceso a la Información Pública es el órgano de control de la ley.
+        Según la Ley 25.326 de Protección de Datos Personales podés pedir acceso, rectificación o eliminación de tus
+        datos. La Agencia de Acceso a la Información Pública es el órgano de control de la ley.
       </p>
     </article>
   );

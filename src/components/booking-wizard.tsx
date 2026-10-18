@@ -205,9 +205,7 @@ export function BookingWizard({
       // No liberamos el botón: queda "Reservando…" hasta que carga el comprobante.
     } catch (err) {
       const e = err as Error & { status?: number };
-      setError(
-        e.status ? e.message : "No pudimos conectarnos. Revisá tu conexión y probá de nuevo.",
-      );
+      setError(e.status ? e.message : "No pudimos conectarnos. Revisá tu conexión y probá de nuevo.");
       if (e.status === 401) {
         router.push(`/cuenta/ingresar?volver=${encodeURIComponent(`/${slug}/reservar`)}`);
         return;
@@ -293,7 +291,9 @@ export function BookingWizard({
               );
             })}
           </div>
-          <p className="hint">Con &quot;El primero disponible&quot; ves los horarios de todos y te asignamos a quien esté libre.</p>
+          <p className="hint">
+            Con &quot;El primero disponible&quot; ves los horarios de todos y te asignamos a quien esté libre.
+          </p>
         </Step>
       )}
 
@@ -322,7 +322,9 @@ export function BookingWizard({
               >
                 <span className={`text-xs capitalize ${selected ? "" : "text-muted"}`}>{parts.join(" ")}</span>
                 <span className="text-lg leading-tight font-semibold tabular-nums">{dayNumber}</span>
-                <span className={`text-[0.7rem] uppercase ${selected ? "" : "text-muted"} ${showMonth ? "" : "invisible"}`}>
+                <span
+                  className={`text-[0.7rem] uppercase ${selected ? "" : "text-muted"} ${showMonth ? "" : "invisible"}`}
+                >
                   {MONTHS[month]}
                 </span>
               </button>
@@ -395,12 +397,7 @@ export function BookingWizard({
             missing={service ? undefined : "Elegir servicio"}
             onFix={() => scrollToStep("paso-servicio")}
           />
-          {showBarbers && (
-            <SummaryRow
-              label="Con"
-              value={barber?.name ?? "El primero disponible"}
-            />
-          )}
+          {showBarbers && <SummaryRow label="Con" value={barber?.name ?? "El primero disponible"} />}
           <SummaryRow
             label="Día"
             value={<span className="first-letter:uppercase">{dateOption?.longLabel}</span>}
@@ -441,9 +438,7 @@ export function BookingWizard({
         </fieldset>
 
         <div aria-live="assertive">
-          {error && (
-            <p className="rounded-xl border border-bad/40 bg-bad/10 p-3 text-sm text-bad">{error}</p>
-          )}
+          {error && <p className="rounded-xl border border-bad/40 bg-bad/10 p-3 text-sm text-bad">{error}</p>}
         </div>
 
         {missing.length > 0 && (

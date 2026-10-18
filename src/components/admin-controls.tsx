@@ -113,7 +113,9 @@ export function BlockForm({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {(allowAll || barbers.length > 1) && (
           <div className="col-span-2 sm:col-span-4">
-            <label htmlFor="block-barber" className="label">Barbero</label>
+            <label htmlFor="block-barber" className="label">
+              Barbero
+            </label>
             <select id="block-barber" className="input" value={barberId} onChange={(e) => setBarberId(e.target.value)}>
               {allowAll && <option value="any">Todos (cierra el local)</option>}
               {barbers.map((b) => (
@@ -125,7 +127,9 @@ export function BlockForm({
           </div>
         )}
         <div>
-          <label htmlFor="from" className="label">Desde</label>
+          <label htmlFor="from" className="label">
+            Desde
+          </label>
           <select id="from" className="input" value={from} onChange={(e) => setFrom(e.target.value)}>
             {times.slice(0, -1).map((t) => (
               <option key={t}>{t}</option>
@@ -133,7 +137,9 @@ export function BlockForm({
           </select>
         </div>
         <div>
-          <label htmlFor="to" className="label">Hasta</label>
+          <label htmlFor="to" className="label">
+            Hasta
+          </label>
           <select id="to" className="input" value={to} onChange={(e) => setTo(e.target.value)}>
             {times.slice(1).map((t) => (
               <option key={t}>{t}</option>
@@ -141,7 +147,9 @@ export function BlockForm({
           </select>
         </div>
         <div className="col-span-2">
-          <label htmlFor="reason" className="label">Motivo (opcional)</label>
+          <label htmlFor="reason" className="label">
+            Motivo (opcional)
+          </label>
           <input
             id="reason"
             className="input"

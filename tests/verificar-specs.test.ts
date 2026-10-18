@@ -83,7 +83,10 @@ describe("verificación de specs", () => {
 
   it("el test de un criterio de otra spec no cuenta", () => {
     armar("Implementada");
-    escribir("tests/algo.test.ts", 'it("[001-CA-1] a", () => {});\nit("[002-CA-2] b", () => {});\nit("[CA-2] c", () => {});\n');
+    escribir(
+      "tests/algo.test.ts",
+      'it("[001-CA-1] a", () => {});\nit("[002-CA-2] b", () => {});\nit("[CA-2] c", () => {});\n',
+    );
     expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/001-algo.*001-CA-2/)]);
   });
 

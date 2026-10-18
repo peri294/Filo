@@ -13,7 +13,11 @@ export function clientIp(request: Request) {
     const realIp = request.headers.get("x-real-ip");
     if (realIp) return realIp.trim();
   }
-  const hops = request.headers.get("x-forwarded-for")?.split(",").map((h) => h.trim()).filter(Boolean);
+  const hops = request.headers
+    .get("x-forwarded-for")
+    ?.split(",")
+    .map((h) => h.trim())
+    .filter(Boolean);
   return hops?.at(-1) || "desconocida";
 }
 

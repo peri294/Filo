@@ -2,7 +2,11 @@ import { safeReturnTo } from "@/lib/return-to";
 import { RecoverForm } from "@/components/auth-forms";
 import { pageMetadata } from "../../../seo";
 
-export const metadata = pageMetadata({ title: "Recuperar contraseña", description: "Recuperá tu contraseña con un código por SMS.", noIndex: true });
+export const metadata = pageMetadata({
+  title: "Recuperar contraseña",
+  description: "Recuperá tu contraseña con un código por SMS.",
+  noIndex: true,
+});
 
 export default async function RecuperarPage({ searchParams }: PageProps<"/cuenta/recuperar">) {
   const volver = safeReturnTo((await searchParams).volver, "/cuenta");

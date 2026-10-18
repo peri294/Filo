@@ -7,7 +7,11 @@ import { ServicesEditor, SettingsForm } from "@/components/admin-config-forms";
 import { BarbersEditor } from "@/components/barbers-editor";
 import { pageMetadata } from "../../../seo";
 
-export const metadata = pageMetadata({ title: "Configuración", description: "Configuración de la barbería.", noIndex: true });
+export const metadata = pageMetadata({
+  title: "Configuración",
+  description: "Configuración de la barbería.",
+  noIndex: true,
+});
 
 export default async function ConfigPage() {
   const user = await getCurrentStaff();

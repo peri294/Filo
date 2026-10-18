@@ -1,3 +1,9 @@
-# Los scripts de shell y los hooks siempre con fin de línea LF (con CRLF fallan en Linux/Mac y en el CI).
-.githooks/* text eol=lf
-*.sh text eol=lf
+# Todo el repo con fin de línea LF, en cualquier sistema operativo y con cualquier agente.
+# (Prettier también escribe LF; con CRLF el chequeo de formato fallaría en Windows.)
+* text=auto eol=lf
+
+# Binarios: sin conversión.
+*.png binary
+*.jpg binary
+*.ico binary
+*.db binary

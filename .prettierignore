@@ -1,0 +1,9 @@
+# Generados o de terceros
+.next/
+node_modules/
+src/generated/
+prisma/migrations/
+package-lock.json
+next-env.d.ts
+# Markdown: lo escriben personas y agentes con saltos de línea a mano; no se reformatea.
+*.md

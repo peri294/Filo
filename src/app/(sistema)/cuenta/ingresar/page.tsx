@@ -4,7 +4,11 @@ import { safeReturnTo } from "@/lib/return-to";
 import { LoginForm } from "@/components/auth-forms";
 import { pageMetadata } from "../../../seo";
 
-export const metadata = pageMetadata({ title: "Ingresar", description: "Ingresá para reservar y ver tus turnos.", noIndex: true });
+export const metadata = pageMetadata({
+  title: "Ingresar",
+  description: "Ingresá para reservar y ver tus turnos.",
+  noIndex: true,
+});
 
 export default async function IngresarPage({ searchParams }: PageProps<"/cuenta/ingresar">) {
   const volver = safeReturnTo((await searchParams).volver, "/cuenta");

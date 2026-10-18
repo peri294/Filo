@@ -8,7 +8,11 @@ import { formatLongDate, formatTime } from "@/lib/time";
 import { LogoutButton } from "@/components/auth-forms";
 import { pageMetadata } from "../../seo";
 
-export const metadata = pageMetadata({ title: "Mis turnos", description: "Tus turnos en todas las barberías.", noIndex: true });
+export const metadata = pageMetadata({
+  title: "Mis turnos",
+  description: "Tus turnos en todas las barberías.",
+  noIndex: true,
+});
 
 const STATUS_STYLE: Record<string, string> = {
   CONFIRMADO: "text-ok",
@@ -65,7 +69,9 @@ export default async function CuentaPage() {
           <CalendarDays className="size-4 text-brass" aria-hidden /> Próximos
         </h2>
         {upcoming.length === 0 ? (
-          <p className="text-sm text-muted">No tenés turnos próximos. Entrá a la página de tu barbería para reservar.</p>
+          <p className="text-sm text-muted">
+            No tenés turnos próximos. Entrá a la página de tu barbería para reservar.
+          </p>
         ) : (
           <ul className="space-y-2">
             {upcoming.map((a) => (

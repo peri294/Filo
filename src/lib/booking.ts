@@ -102,7 +102,10 @@ export function bookableDates(tenant: Tenant) {
 }
 
 export function activeBarbers(tenantId: string) {
-  return prisma.barber.findMany({ where: { tenantId, active: true }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] });
+  return prisma.barber.findMany({
+    where: { tenantId, active: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+  });
 }
 
 export type SlotOption = { time: string; available: boolean };
@@ -192,7 +195,12 @@ export type CreateAppointmentInput = {
 
 export type BookingClient = { id: string; name: string; phone: string };
 
-export async function createAppointment(tenant: Tenant, client: BookingClient, input: CreateAppointmentInput, clientIp: string) {
+export async function createAppointment(
+  tenant: Tenant,
+  client: BookingClient,
+  input: CreateAppointmentInput,
+  clientIp: string,
+) {
   if (!tenant.active) throw new BookingError(403, "Esta barbería no está tomando turnos online por el momento");
   if (input.paymentMethod === "MERCADOPAGO") {
     throw new BookingError(400, "El pago con Mercado Pago todavía no está disponible");
@@ -233,7 +241,11 @@ export async function createAppointment(tenant: Tenant, client: BookingClient, i
     const dayEnd = zonedInstant(addDaysToKey(input.date, 1), "00:00");
     const counts = await prisma.appointment.groupBy({
       by: ["barberId"],
-      where: { barberId: { in: free.map((b) => b.id) }, status: { in: ACTIVE_STATUSES }, startsAt: { gte: dayStart, lt: dayEnd } },
+      where: {
+        barberId: { in: free.map((b) => b.id) },
+        status: { in: ACTIVE_STATUSES },
+        startsAt: { gte: dayStart, lt: dayEnd },
+      },
       _count: true,
     });
     const load = new Map(counts.map((c) => [c.barberId, c._count]));
@@ -278,7 +290,11 @@ export async function createAppointment(tenant: Tenant, client: BookingClient, i
     } catch (e) {
       if (!isUniqueViolation(e)) throw e;
       // Chocó con otra reserva simultánea: si fue el mismo cliente, se corta; si fue el horario, se prueba otro barbero.
-      if (await prisma.clientHold.findUnique({ where: { tenantId_clientId: { tenantId: tenant.id, clientId: client.id } } })) {
+      if (
+        await prisma.clientHold.findUnique({
+          where: { tenantId_clientId: { tenantId: tenant.id, clientId: client.id } },
+        })
+      ) {
         throw CLIENT_TAKEN;
       }
     }
@@ -302,7 +318,10 @@ export async function getAppointmentByToken(token: string) {
 export async function markClientNotified(clientId: string, token: string) {
   await releaseExpired();
   const now = new Date();
-  const appt = await prisma.appointment.findUnique({ where: { accessToken: token }, select: { startsAt: true, clientId: true } });
+  const appt = await prisma.appointment.findUnique({
+    where: { accessToken: token },
+    select: { startsAt: true, clientId: true },
+  });
   if (!appt || appt.clientId !== clientId) throw new BookingError(404, "Turno no encontrado");
   const holdUntil = Math.min(now.getTime() + NOTIFIED_HOLD_HOURS * 60 * MINUTE, appt.startsAt.getTime());
   const { count } = await prisma.appointment.updateMany({
@@ -313,7 +332,9 @@ export async function markClientNotified(clientId: string, token: string) {
 }
 
 export function canSelfCancel(appt: { status: string; startsAt: Date }) {
-  return ACTIVE_STATUSES.includes(appt.status) && appt.startsAt.getTime() - Date.now() > SELF_CANCEL_MIN_HOURS * 60 * MINUTE;
+  return (
+    ACTIVE_STATUSES.includes(appt.status) && appt.startsAt.getTime() - Date.now() > SELF_CANCEL_MIN_HOURS * 60 * MINUTE
+  );
 }
 
 /** Cancela solo si el turno sigue en alguno de los estados esperados. Devuelve si lo canceló. */
@@ -388,7 +409,8 @@ export async function adminConfirm(staff: StaffScope, id: string) {
 export async function adminReject(staff: StaffScope, id: string) {
   await releaseExpired();
   await findManaged(staff, id);
-  if (!(await cancel(id, "RECHAZADO", ["PENDIENTE_WHATSAPP"]))) throw new BookingError(409, "El turno ya no está pendiente");
+  if (!(await cancel(id, "RECHAZADO", ["PENDIENTE_WHATSAPP"])))
+    throw new BookingError(409, "El turno ya no está pendiente");
 }
 
 export async function adminCancel(staff: StaffScope, id: string) {
@@ -424,7 +446,9 @@ export async function createBlock(staff: StaffScope, tenant: Tenant, input: Bloc
   if (input.barberId === ANY_BARBER) {
     if (staff.role !== "ADMIN") throw new BookingError(403, "Solo el admin puede bloquear a todos los barberos");
   } else {
-    barbers = barbers.filter((b) => b.id === input.barberId && canManage(staff, { tenantId: b.tenantId, barberId: b.id }));
+    barbers = barbers.filter(
+      (b) => b.id === input.barberId && canManage(staff, { tenantId: b.tenantId, barberId: b.id }),
+    );
     if (barbers.length === 0) throw new BookingError(404, "Barbero no encontrado");
   }
 
@@ -442,7 +466,10 @@ export async function createBlock(staff: StaffScope, tenant: Tenant, input: Bloc
   const endsAt = zonedInstant(date, to);
   if (endsAt <= startsAt) throw new BookingError(400, "La hora de fin tiene que ser posterior a la de inicio");
   if (minutesOf(from) < minutesOf(hours.open) || minutesOf(to) > minutesOf(hours.close)) {
-    throw new BookingError(400, `El bloqueo tiene que estar dentro del horario de atención (${hours.open} a ${hours.close})`);
+    throw new BookingError(
+      400,
+      `El bloqueo tiene que estar dentro del horario de atención (${hours.open} a ${hours.close})`,
+    );
   }
 
   await releaseExpired();
@@ -485,7 +512,8 @@ export function weekStartOf(dateKey: string) {
  * Agenda del panel. El admin ve a todos (o filtra por barbero); el barbero, solo la suya.
  */
 export async function getAgenda(staff: StaffScope, tenant: Tenant, dateKey: string, barberFilter?: string) {
-  if (staff.role !== "ADMIN" && staff.role !== "BARBER") throw new BookingError(403, "No tenés permiso para ver la agenda");
+  if (staff.role !== "ADMIN" && staff.role !== "BARBER")
+    throw new BookingError(403, "No tenés permiso para ver la agenda");
   await releaseExpired();
   const barberId = staff.role === "BARBER" ? (staff.barberId ?? "ninguno") : barberFilter || undefined;
   const scope = { tenantId: tenant.id, ...(barberId ? { barberId } : {}) };
