@@ -66,7 +66,9 @@ cambia en este archivo.
   sesión puede ser de otro agente y no ve esta conversación.
 - Frenar y esperar al dueño en los puntos que marcan los procesos (spec, plan, cierre) y ante cualquier choque con la
   constitución. Solo el dueño la enmienda.
-- No commitear, pushear ni mergear sin que el dueño lo pida.
+- No commitear, pushear ni mergear sin que el dueño lo pida. Todo cambio entra a `main` por PR.
+- **Nunca saltear los controles:** nada de `git commit --no-verify` ni de desactivar el hook o el CI. Si un control
+  falla, se arregla la causa.
 
 **Al terminar la sesión:** anotar una línea en la bitácora de `tareas.md` (fecha, agente, qué se hizo, qué sigue) y
 dejar `npm run check` en verde o explicar por qué no.

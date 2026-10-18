@@ -93,8 +93,13 @@ Para que eso funcione:
 - **El estado vive en el repo, no en el chat.** Cada decisión se escribe en la spec, el plan o las tareas. Cada
   sesión empieza leyendo la **bitácora** de `tareas.md` y termina agregándole una línea (fecha, agente, qué se hizo,
   qué sigue).
-- **Los chequeos son de máquina.** `npm run check` (con `npm run specs`) falla igual sin importar quién escribió el
-  código, así que ningún agente puede "dar por terminado" algo que no cumple el flujo.
+- **Los chequeos son de máquina** y no dependen de que el agente los respete:
+  - **Hook antes del commit** (`.githooks/pre-commit`, se activa solo con `npm install`): typecheck, lint y specs.
+  - **CI en GitHub Actions** (`.github/workflows/check.yml`): `npm run check` completo en una máquina limpia, en cada
+    push y en cada PR.
+  - **`main` protegida en GitHub:** solo entra por PR y con el CI en verde.
+  - **Permisos de Claude Code** (`.claude/settings.json`): pide confirmación para `git push` y para resetear la base,
+    y no puede leer `.env`. Para Gemini, Grok y el resto, el freno real es la protección de `main`.
 - **Una sesión, una tarea.** Conviene que cada sesión cierre su tarea con la suite en verde y la bitácora al día;
   así la siguiente arranca de un punto limpio.
 

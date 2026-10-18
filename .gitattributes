@@ -1,0 +1,3 @@
+# Los scripts de shell y los hooks siempre con fin de línea LF (con CRLF fallan en Linux/Mac y en el CI).
+.githooks/* text eol=lf
+*.sh text eol=lf
