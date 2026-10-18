@@ -17,13 +17,26 @@ npm run dev                   # http://localhost:3000 · /demo · /panel · /cue
 
 Sin TWILIO_* configurado, fuera de producción los códigos SMS se escriben en la consola del servidor.
 
-Chequeos antes de dar algo por terminado: `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`.
+Chequeos antes de dar algo por terminado: `npm run check` (= `typecheck` + `lint` + `test` + `build`).
 Los tests (Vitest, en `tests/`) usan una base aparte `test.db` que se recrea con las migraciones en cada corrida; nunca tocan `dev.db`.
+
+## Forma de trabajo: SDD + TDD
+
+Detalle en [`docs/flujo-de-trabajo.md`](docs/flujo-de-trabajo.md). Resumen:
+
+- **Comportamiento nuevo = spec primero.** `docs/specs/NNN-nombre/{spec,plan,tareas}.md` (plantilla en
+  `docs/specs/_plantilla/`). Sin spec `Aprobada` y sin preguntas abiertas no se escribe código.
+- **Cada tarea con TDD:** test que falla por la razón correcta → mínimo código → refactor. Los bugs también:
+  primero el test que los reproduce.
+- **Trazabilidad:** cada criterio `CA-n` de la spec tiene un test con `[CA-n]` en el nombre.
+- Comandos: `/spec <idea>` → `/planear NNN` → `/tdd NNN Tn` (una vez por tarea) → `/cerrar NNN`.
+- No hace falta spec para textos, estilos, refactors o dependencias, pero sí `npm run check`.
+- Una spec que choque con [`docs/constitucion.md`](docs/constitucion.md) no se aprueba sin enmendarla antes (art. 9).
 
 ## Stack
 
 - Next.js 16 (App Router, `params`/`searchParams`/`cookies()` son async). Leer `node_modules/next/dist/docs/` ante dudas.
-- Prisma 7 con SQLite local y adapter `@prisma/adapter-better-sqlite3`. Cliente generado en `src/generated/prisma` (no se commitea).
+- Prisma 7: SQLite en desarrollo y tests; **PostgreSQL en producción** (constitución 5.2, migración todavía pendiente). Adapter `@prisma/adapter-better-sqlite3`. Cliente generado en `src/generated/prisma` (no se commitea).
 - Tailwind v4: tokens de color y utilidades (`card`, `btn-primary`, `input`, etc.) en `src/app/globals.css`.
 
 ## Roles y rutas
@@ -47,30 +60,9 @@ Los tests (Vitest, en `tests/`) usan una base aparte `test.db` que se recrea con
 - `src/lib/schedule.ts`: horario por día (JSON `weeklyHours`); `src/lib/time.ts`: hora de Argentina; `src/lib/format.ts`: celulares y precios.
 - `src/lib/http.ts`: `handle`, `handleSameSite`, `handleStaff(request, roles, fn)`, `handleClient`, `clientIp`.
 
-## Reglas de negocio que no hay que romper
+## Constitución (reglas que no hay que romper)
 
-- **Aislamiento:** toda consulta del panel filtra por `tenantId` del usuario; el barbero, además, por su `barberId`.
-  Un recurso de otra barbería o de otro barbero responde **404** (no revela que existe).
-- Cada bloque de 5 minutos ocupado de cada barbero (`LOCK_UNIT_MIN`) es una fila en `SlotLock` con clave
-  `(barberId, startsAt)`: la base impide reservas dobles. `ClientHold (tenantId, clientId)` garantiza 1 turno activo
-  por cliente en cada barbería. Al cancelar o vencer se borran los dos (`releaseHolds`).
-- "El primero disponible" (`ANY_BARBER`) asigna al barbero libre con menos turnos ese día; si choca, prueba el siguiente.
-- Horario efectivo de un barbero = su horario propio recortado al del local (`barberHours`).
-- Efectivo: `PENDIENTE_WHATSAPP` 15 minutos; "Ya envié el mensaje" extiende hasta 12 h (sin pasar el inicio).
-  La confirmación va al WhatsApp del local. Los vencidos se liberan en `releaseExpired()`, sin cron.
-- Límite de 3 reservas por hora por IP (decisión del dueño, no cambiar a "1 por IP").
-- Límites de login: solo cuentan los intentos fallidos, por IP y por celular. **Nunca un tope global**: dejaría que una
-  sola persona bloquee el acceso de todos.
-- La IP (`clientIp`) solo es confiable en Vercel (`x-real-ip`). Fuera de Vercel, sin un proxy de confianza que reescriba
-  `x-forwarded-for`, el cliente puede falsificarla y esquivar los límites por IP (login, SMS, reservas) y agotar el tope
-  diario de SMS (`OTP_DAILY_CAP`). Desplegar solo en Vercel, o adaptar `clientIp` al proxy que haya.
-- El cliente cancela solo si faltan más de 24 h. Asistencia ("Vino"/"No vino") solo en turnos confirmados ya empezados.
-- Recuperar clave: cada uno por SMS; plan B: el admin a sus barberos, el superadmin a los admins. Cambiar la clave cierra sesiones.
-- Reembolsos (con Mercado Pago): solo totales. Mercado Pago todavía NO se integra; no tocar esa parte.
+Las reglas de negocio, seguridad, datos y proceso están en la constitución y mandan sobre cualquier spec o plan.
+Solo el dueño del proyecto aprueba cambios a ese archivo.
 
-## Convenciones
-
-- Toda la UI y los mensajes de error en español rioplatense (vos).
-- Precios en pesos enteros (`Int`), nunca `Float`.
-- Mobile-first.
-- Los textos de `/terminos` y `/privacidad` son borradores: los tiene que revisar un abogado.
+@docs/constitucion.md

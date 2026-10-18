@@ -6,6 +6,8 @@ verificada por SMS, para reservar en cualquier barbería de la plataforma.
 
 > Estado: MVP funcional, con tests. El pago con Mercado Pago está modelado en la base pero todavía no integrado.
 
+> Cómo se trabaja: [constitución del proyecto](docs/constitucion.md) y [flujo SDD + TDD](docs/flujo-de-trabajo.md).
+
 ## Funcionalidades
 
 **Clientes**
@@ -31,7 +33,7 @@ verificada por SMS, para reservar en cualquier barbería de la plataforma.
 | Framework | **Next.js 16** (App Router, Server Components, Route Handlers) |
 | UI | **React 19**, **Tailwind CSS v4**, lucide-react |
 | Lenguaje | **TypeScript** (modo estricto) |
-| Base de datos | **Prisma 7** (ORM + migraciones) sobre **SQLite** (`better-sqlite3`); preparado para Postgres |
+| Base de datos | **Prisma 7** (ORM + migraciones): **SQLite** (`better-sqlite3`) en desarrollo y tests; **PostgreSQL** en producción (pendiente) |
 | Validación | **Zod 4** en todas las entradas de la API |
 | Fechas | date-fns + `@date-fns/tz` (zona horaria de Argentina) |
 | SMS | Twilio (API REST) |
