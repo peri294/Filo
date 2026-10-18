@@ -25,7 +25,8 @@ npm run dev                   # http://localhost:3000 · /demo · /panel · /cue
 
 Sin TWILIO_* configurado, fuera de producción los códigos SMS se escriben en la consola del servidor.
 
-Chequeos antes de dar algo por terminado: `npm run check` (= `typecheck` + `lint` + `specs` + `test` + `build`).
+Chequeos antes de dar algo por terminado: `npm run check` (= `format:check` + `typecheck` + `lint` + `specs` + `test` + `build`).
+Antes de commitear, `npm run format` deja el código con el formato de Prettier. Node 24 (`.nvmrc`; npm falla con otra versión).
 Los tests (Vitest, en `tests/`) usan una base aparte `prisma/test.db` que se recrea con las migraciones en cada corrida; nunca tocan `prisma/dev.db`.
 
 ## Forma de trabajo: SDD + TDD

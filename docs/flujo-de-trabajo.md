@@ -71,7 +71,7 @@ Proceso: [`procesos/tdd.md`](procesos/tdd.md) · atajo `/tdd 001 T3`.
 
 ## 4. Cerrar
 
-- `npm run check` (typecheck + lint + specs + tests + build) en verde. `npm run specs` controla estados, índice,
+- `npm run check` (formato + typecheck + lint + specs + tests + build) en verde. `npm run specs` controla estados, índice,
   preguntas abiertas, tareas marcadas y que cada `CA-n` de una spec `Implementada` tenga su test.
 - La spec refleja lo que realmente se construyó; estado → `Implementada`.
 - Si se enmendó la constitución, se sube su versión y se anota en su registro de cambios. Si cambió la ubicación de
@@ -94,7 +94,8 @@ Para que eso funcione:
   sesión empieza leyendo la **bitácora** de `tareas.md` y termina agregándole una línea (fecha, agente, qué se hizo,
   qué sigue).
 - **Los chequeos son de máquina** y no dependen de que el agente los respete:
-  - **Hook antes del commit** (`.githooks/pre-commit`, se activa solo con `npm install`): typecheck, lint y specs.
+  - **Hook antes del commit** (`.githooks/pre-commit`, se activa solo con `npm install`): formato, typecheck, lint y
+    specs.
   - **CI en GitHub Actions** (`.github/workflows/check.yml`): `npm run check` completo en una máquina limpia, en cada
     push y en cada PR.
   - **`main` protegida en GitHub:** solo entra por PR y con el CI en verde.
@@ -108,8 +109,10 @@ Para que eso funcione:
 Cambios sin comportamiento nuevo: textos, estilos, renombres, actualizaciones de dependencias, refactors con los tests
 en verde. Igual se corre `npm run check`. Un bug chico puede ir sin spec, pero **nunca sin test que lo reproduzca**.
 
-## Convención de commits y ramas
+## Convención de commits, ramas y PRs
 
 - Una rama por spec: `feat/001-recordatorio-turno`. Commits tipo Conventional Commits en español:
   `test(booking): CA-2 cancelación con menos de 24 h`, `feat(booking): …`, `fix: …`, `docs(spec): …`.
 - Lo ideal: el commit de la tarea incluye el test y el código juntos (el rojo se vio en local).
+- Todo entra a `main` por PR. El PR completa la plantilla de `.github/pull_request_template.md` (spec, criterios,
+  bitácora, agente) y necesita el CI en verde.

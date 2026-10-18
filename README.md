@@ -97,7 +97,7 @@ TypeScript, ESLint, PostCSS, Prisma y Vitest, `.env.example`, `.mcp.json` y las 
 
 ## Cómo correrlo
 
-Requiere Node.js 20+.
+Requiere Node.js 24 (`.nvmrc`). Con otra versión, `npm install` falla a propósito.
 
 ```bash
 cp .env.example .env          # completar SUPERADMIN_PHONE y SUPERADMIN_PASSWORD
@@ -114,12 +114,13 @@ Sin credenciales de Twilio, los códigos SMS se muestran en la consola del servi
 ## Tests y calidad
 
 ```bash
-npm run check       # todo junto: typecheck + lint + specs + tests + build
+npm run check       # todo junto: formato + typecheck + lint + specs + tests + build
+npm run format      # aplica el formato de Prettier
 npm test            # tests de integración (Vitest) sobre prisma/test.db, que se recrea en cada corrida
 npm run specs       # trazabilidad de docs/specs (cada criterio con su test)
 ```
 
-Los mismos chequeos corren solos: typecheck, lint y specs antes de cada commit (hook en `.githooks/`, que se activa
+Los mismos chequeos corren solos: formato, typecheck, lint y specs antes de cada commit (hook en `.githooks/`, que se activa
 con `npm install`) y `npm run check` completo en GitHub Actions en cada push y PR. `main` solo acepta PRs con el CI
 en verde.
 
