@@ -1,0 +1,4 @@
+#!/bin/sh
+# Antes de cada commit: tipos, lint y specs. Los tests y el build completos corren en el CI (.github/workflows/check.yml).
+# Se activa solo con `npm install` (script "prepare"). No saltearlo con --no-verify.
+npm run --silent typecheck && npm run --silent lint && npm run --silent specs

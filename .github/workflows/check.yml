@@ -1,0 +1,25 @@
+# Corre los mismos chequeos que `npm run check` en una máquina limpia, en cada push y en cada PR.
+# La protección de main en GitHub exige que este job ("check") esté en verde para mergear.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check

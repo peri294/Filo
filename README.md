@@ -119,6 +119,10 @@ npm test            # tests de integración (Vitest) sobre prisma/test.db, que s
 npm run specs       # trazabilidad de docs/specs (cada criterio con su test)
 ```
 
+Los mismos chequeos corren solos: typecheck, lint y specs antes de cada commit (hook en `.githooks/`, que se activa
+con `npm install`) y `npm run check` completo en GitHub Actions en cada push y PR. `main` solo acepta PRs con el CI
+en verde.
+
 Los tests cubren reservas concurrentes y dobles, asignación de "el primero disponible", vencimientos, cancelaciones,
 aislamiento entre barberías y barberos, login, límites de intentos y flujos de recuperación por SMS.
 
