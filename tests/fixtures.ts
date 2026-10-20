@@ -21,20 +21,12 @@ export function advance(minutes: number) {
   vi.setSystemTime(new Date(Date.now() + minutes * MIN));
 }
 
-/** Borra todo (en orden, por las claves foráneas). */
+/** Borra todo en una sola consulta (la base puede estar lejos: cada ida y vuelta cuesta). */
 export async function resetDb() {
-  await prisma.slotLock.deleteMany();
-  await prisma.clientHold.deleteMany();
-  await prisma.appointment.deleteMany();
-  await prisma.blockedSlot.deleteMany();
-  await prisma.session.deleteMany();
-  await prisma.staffUser.deleteMany();
-  await prisma.service.deleteMany();
-  await prisma.barber.deleteMany();
-  await prisma.tenant.deleteMany();
-  await prisma.client.deleteMany();
-  await prisma.otpCode.deleteMany();
-  await prisma.rateLimit.deleteMany();
+  await prisma.$executeRawUnsafe(
+    `TRUNCATE "SlotLock", "ClientHold", "Appointment", "BlockedSlot", "Session", "StaffUser", "Service",
+       "Barber", "Tenant", "Client", "OtpCode", "RateLimit" RESTART IDENTITY CASCADE`,
+  );
 }
 
 export type Shop = Awaited<ReturnType<typeof makeShop>>;

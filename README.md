@@ -33,7 +33,7 @@ verificada por SMS, para reservar en cualquier barbería de la plataforma.
 | Framework | **Next.js 16** (App Router, Server Components, Route Handlers) |
 | UI | **React 19**, **Tailwind CSS v4**, lucide-react |
 | Lenguaje | **TypeScript** (modo estricto) |
-| Base de datos | **Prisma 7** (ORM + migraciones): **SQLite** (`better-sqlite3`) en desarrollo y tests; **PostgreSQL** en producción (pendiente) |
+| Base de datos | **Prisma 7** (ORM + migraciones): **PostgreSQL** en todos los entornos (Neon, con una rama por entorno) |
 | Validación | **Zod 4** en todas las entradas de la API |
 | Fechas | date-fns + `@date-fns/tz` (zona horaria de Argentina) |
 | SMS | Twilio (API REST) |
@@ -84,9 +84,9 @@ src/
     api/              Route Handlers: [slug], cuenta, panel, superadmin
   components/         formularios y componentes de cliente (wizard de reserva, editor de barberos...)
   lib/                lógica de negocio, auth, OTP, SMS, rate limiting, horarios
-prisma/               schema, migraciones, seed y las bases SQLite locales (dev.db, test.db; ignoradas)
-tests/                tests de integración (Vitest) contra una base SQLite aparte
-scripts/              herramientas del repo (verificar-specs.ts: trazabilidad de las specs)
+prisma/               schema, migraciones, seed y decisiones por entorno (entorno.ts)
+tests/                tests de integración (Vitest) contra una base Postgres aparte
+scripts/              herramientas del repo (verificar-specs.ts: trazabilidad de las specs; vercel-build.mjs: deploy)
 docs/                 constitución, flujo de trabajo, procesos, specs e históricos
 .claude/ .gemini/     atajos de cada agente; la guía común está en AGENTS.md
 ```
@@ -100,7 +100,7 @@ TypeScript, ESLint, PostCSS, Prisma y Vitest, `.env.example`, `.mcp.json` y las 
 Requiere Node.js 24 (`.nvmrc`). Con otra versión, `npm install` falla a propósito.
 
 ```bash
-cp .env.example .env          # completar SUPERADMIN_PHONE y SUPERADMIN_PASSWORD
+cp .env.example .env          # completar las URLs de Neon, SUPERADMIN_PHONE y SUPERADMIN_PASSWORD
 npm install                   # también genera el cliente de Prisma
 npx prisma migrate deploy
 npx prisma db seed            # superadmin + barbería "demo" con 2 barberos
@@ -116,7 +116,7 @@ Sin credenciales de Twilio, los códigos SMS se muestran en la consola del servi
 ```bash
 npm run check       # todo junto: formato + typecheck + lint + specs + tests + build
 npm run format      # aplica el formato de Prettier
-npm test            # tests de integración (Vitest) sobre prisma/test.db, que se recrea en cada corrida
+npm test            # tests de integración (Vitest) sobre TEST_DATABASE_URL, que se recrea en cada corrida
 npm run specs       # trazabilidad de docs/specs (cada criterio con su test)
 ```
 
@@ -130,7 +130,7 @@ aislamiento entre barberías y barberos, login, límites de intentos y flujos de
 ## Próximos pasos
 
 - Integración de Mercado Pago (Checkout Pro y reembolsos totales).
-- Migración a Postgres para producción.
+- SMS reales con Twilio (sin eso, en producción los clientes no se pueden registrar).
 - Revisión legal de los textos de términos y privacidad (hoy son borradores).
 
 ## Licencia

@@ -27,7 +27,12 @@ Sin TWILIO_* configurado, fuera de producción los códigos SMS se escriben en l
 
 Chequeos antes de dar algo por terminado: `npm run check` (= `format:check` + `typecheck` + `lint` + `specs` + `test` + `build`).
 Antes de commitear, `npm run format` deja el código con el formato de Prettier. Node 24 (`.nvmrc`; npm falla con otra versión).
-Los tests (Vitest, en `tests/`) usan una base aparte `prisma/test.db` que se recrea con las migraciones en cada corrida; nunca tocan `prisma/dev.db`.
+Los tests (Vitest, en `tests/`) usan `TEST_DATABASE_URL` (en local, la rama `test` de Neon; en el CI, un Postgres del
+workflow), que se vacía y se recrea con las migraciones en cada corrida. Se niegan a correr si apunta a la base de
+desarrollo o de producción. Con Neon tardan unos 2 minutos por la latencia.
+
+Producción: Vercel despliega `main` con `npm run vercel-build` (`vercel.json`), que en producción aplica las
+migraciones y da de alta el superadmin antes de compilar.
 
 ## Forma de trabajo: SDD + TDD
 
@@ -77,7 +82,9 @@ dejar `npm run check` en verde o explicar por qué no.
 ## Stack
 
 - Next.js 16 (App Router, `params`/`searchParams`/`cookies()` son async). Leer `node_modules/next/dist/docs/` ante dudas.
-- Prisma 7: SQLite en desarrollo y tests; **PostgreSQL en producción** (constitución 5.2, migración todavía pendiente). Adapter `@prisma/adapter-better-sqlite3`. Cliente generado en `src/generated/prisma` (no se commitea).
+- Prisma 7 con **PostgreSQL** en todos los entornos (constitución 5.2): Neon, proyecto "Filo" en São Paulo, con las
+  ramas `production`, `dev` y `test`. Adapter `@prisma/adapter-pg`. Las migraciones usan `DATABASE_URL_UNPOOLED` si
+  existe (`prisma/entorno.ts`). Cliente generado en `src/generated/prisma` (no se commitea).
 - Tailwind v4: tokens de color y utilidades (`card`, `btn-primary`, `input`, etc.) en `src/app/globals.css`.
 
 ## Roles y rutas

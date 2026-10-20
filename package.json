@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "node scripts/vercel-build.mjs",
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write .",
@@ -25,7 +26,7 @@
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
-    "@prisma/adapter-better-sqlite3": "^7.10.0",
+    "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.52.0",
@@ -50,7 +51,6 @@
     "vitest": "^4.1.11"
   },
   "allowScripts": {
-    "better-sqlite3@12.11.1": true,
     "esbuild@0.28.2": true,
     "prisma@7.10.0": true,
     "unrs-resolver@1.12.2": true,

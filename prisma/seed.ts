@@ -1,12 +1,11 @@
 import "dotenv/config";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { normalizePhone } from "../src/lib/format";
 import { hashPassword } from "../src/lib/passwords";
+import { crearDemo } from "./entorno";
 
-const prisma = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./prisma/dev.db" }),
-});
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
 const services = [
   { name: "Corte clásico", description: "Corte a tijera o máquina, lavado y peinado.", price: 12000, durationMin: 30 },
@@ -41,7 +40,7 @@ async function main() {
   }
 
   // Barbería de demo para desarrollo.
-  if (process.env.NODE_ENV === "production") return;
+  if (!crearDemo(process.env)) return;
   if (await prisma.tenant.findUnique({ where: { slug: "demo" } })) return;
 
   const tenant = await prisma.tenant.create({

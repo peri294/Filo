@@ -6,15 +6,13 @@ Una carpeta por funcionalidad o cambio de comportamiento, numerada: `NNN-nombre-
 
 | Nº | Spec | Estado |
 | --- | --- | --- |
-| — | _(todavía no hay specs)_ | — |
+| 001 | [PostgreSQL en producción y despliegue en Vercel](001-postgres-produccion/spec.md) | Aprobada |
 
 ## Próximas
 
 Ideas anotadas, todavía sin spec. Cuando el dueño decide arrancar una, se crea con el proceso de spec y sale de esta
 lista.
 
-- **PostgreSQL en producción** (constitución 5.2). SQLite sigue en desarrollo y tests. Pregunta para la spec:
-  ¿los tests también corren contra Postgres?
 - **Datos personales** (constitución 5.4, pendiente): si el cliente puede borrar su cuenta y cuánto tiempo se guarda
   el historial. Es una decisión del dueño que entra como enmienda antes de cualquier spec.
 - **Mercado Pago** (constitución 8.3): no se toca hasta que el dueño lo decida.

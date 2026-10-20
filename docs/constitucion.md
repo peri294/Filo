@@ -1,6 +1,6 @@
 # Constitución del proyecto
 
-- **Versión:** 1.1.0
+- **Versión:** 2.0.0
 - **Vigente desde:** 2026-10-17
 - **Aprueba enmiendas:** solo el dueño del proyecto.
 
@@ -99,9 +99,10 @@ admins. Nadie recupera una cuenta de su mismo nivel o superior.
 **5.1** **Precios en pesos enteros (`Int`)**, nunca `Float`.
 *Por qué:* los decimales flotantes redondean mal la plata.
 
-**5.2** **Producción usa PostgreSQL.** SQLite queda solo para desarrollo local y tests. Ninguna funcionalidad puede
-depender de algo exclusivo de SQLite.
-*Por qué:* en serverless (Vercel) el disco no persiste, así que una base SQLite se pierde entre despliegues.
+**5.2** **La base es PostgreSQL** en producción, en desarrollo y en tests (Neon: una rama para cada uno; en el CI,
+un Postgres del propio workflow).
+*Por qué:* en serverless (Vercel) el disco no persiste, así que una base SQLite se pierde entre despliegues. Además,
+Prisma usa un solo proveedor por esquema y los tests tienen que probar la misma base que corre en producción.
 
 **5.3** Las **migraciones ya aplicadas no se editan**: todo cambio de esquema es una migración nueva.
 
@@ -145,7 +146,7 @@ de otra.
 
 **7.5** Nada está terminado sin `npm run check` en verde (typecheck, lint, tests y build).
 
-**7.6** Los tests nunca usan la base de desarrollo (`dev.db`) ni la hora real.
+**7.6** Los tests nunca usan la base de desarrollo ni la de producción, ni la hora real.
 
 ## 8. Decisiones del dueño
 
@@ -180,3 +181,4 @@ parche (1.0.1) si solo se aclara una redacción. Cada cambio se anota abajo.
 | --- | --- | --- |
 | 1.0.0 | 2026-10-17 | Primera versión, a partir de las reglas de `CLAUDE.md`, el README y el código. Se fija PostgreSQL para producción. |
 | 1.1.0 | 2026-10-18 | 7.3: el ID de un criterio en los tests lleva el número de spec (`[NNN-CA-n]`). 9.4: la guía de los agentes es `AGENTS.md` (antes `CLAUDE.md`). Aprobado por el dueño. |
+| 2.0.0 | 2026-10-20 | 5.2: PostgreSQL también en desarrollo y tests (se quita SQLite). 7.6: los tests tampoco usan la base de producción. Spec 001. Aprobado por el dueño. |

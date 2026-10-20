@@ -19,6 +19,7 @@ import {
 } from "@/lib/booking";
 import { createBarber, deleteBarber, updateBarber, updateSettings } from "@/lib/admin-config";
 import { prisma } from "@/lib/db";
+import { BookingError } from "@/lib/errors";
 import { getMetrics } from "@/lib/metrics";
 import { describeWeek } from "@/lib/schedule";
 import { createTenant, setTenantActive } from "@/lib/superadmin";
@@ -151,12 +152,15 @@ describe("agenda por barbero", () => {
     expect(new Set(ok.map((a) => a.barberId)).size).toBe(2);
   });
 
-  it("dos reservas simultáneas del mismo barbero y horario: solo una gana", async () => {
+  it("[001-CA-2] dos reservas simultáneas del mismo barbero y horario: solo una gana", async () => {
     const results = await Promise.allSettled([
       book(shop.tenant, { serviceId: shop.corte, barberId: shop.ana.id }),
       book(shop.tenant, { serviceId: shop.combo, barberId: shop.ana.id, time: "09:30" }),
     ]);
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
+    expect(rejected.reason).toBeInstanceOf(BookingError);
+    expect((rejected.reason as BookingError).status).toBe(409);
   });
 
   it("cada barbero tiene su horario, recortado al del local", async () => {
