@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -22,7 +22,7 @@ function escribir(ruta: string, contenido: string) {
 
 function spec(estado: string, { preguntas = "- [x] ¿Algo? Sí.", criterios = ["CA-1", "CA-2"] } = {}) {
   return [
-    "# 001 · Algo",
+    "# 999 · Algo",
     "",
     `- **Estado:** ${estado}`,
     "",
@@ -38,16 +38,24 @@ function spec(estado: string, { preguntas = "- [x] ¿Algo? Sí.", criterios = ["
 }
 
 function indice(estado: string) {
-  return `| Nº | Spec | Estado |\n| --- | --- | --- |\n| 001 | [Algo](001-algo/spec.md) | ${estado} |\n`;
+  return `| Nº | Spec | Estado |\n| --- | --- | --- |\n| 999 | [Algo](999-algo/spec.md) | ${estado} |\n`;
 }
 
 function armar(estado: string, opciones?: Parameters<typeof spec>[1], tareas = "- [x] **T1** — …\n") {
   escribir("docs/specs/README.md", indice(estado));
-  escribir("docs/specs/001-algo/spec.md", spec(estado, opciones));
-  escribir("docs/specs/001-algo/tareas.md", tareas);
+  escribir("docs/specs/999-algo/spec.md", spec(estado, opciones));
+  escribir("docs/specs/999-algo/tareas.md", tareas);
 }
 
 describe("verificación de specs", () => {
+  it("los ejemplos de este archivo no usan el número de una spec real", () => {
+    // El verificador lee todos los tests, incluido este: un ejemplo con el número de una spec real la cubriría de mentira.
+    const dirSpecs = join(__dirname, "..", "docs", "specs");
+    const reales = existsSync(dirSpecs) ? readdirSync(dirSpecs).map((nombre) => nombre.slice(0, 3)) : [];
+    const usados = [...readFileSync(__filename, "utf-8").matchAll(/\[(\d{3})-CA-\d+\]/g)].map((m) => m[1]);
+    expect(usados.filter((numero) => reales.includes(numero))).toEqual([]);
+  });
+
   it("sin specs no hay errores, y la plantilla no cuenta como spec", () => {
     escribir("docs/specs/README.md", "| Nº | Spec | Estado |\n");
     escribir("docs/specs/_plantilla/spec.md", spec("Borrador", { preguntas: "- [ ] …" }));
@@ -61,44 +69,44 @@ describe("verificación de specs", () => {
 
   it("una spec aprobada no puede tener preguntas abiertas", () => {
     armar("Aprobada", { preguntas: "- [ ] ¿Algo?" });
-    expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/001-algo.*pregunta/i)]);
+    expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/999-algo.*pregunta/i)]);
   });
 
   it("el estado tiene que ser uno de los válidos", () => {
     armar("Casi lista");
-    expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/001-algo.*estado/i)]);
+    expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/999-algo.*estado/i)]);
   });
 
   it("el índice tiene que listar la spec con el mismo estado", () => {
     armar("Aprobada");
     escribir("docs/specs/README.md", indice("Borrador"));
-    expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/001.*índice/i)]);
+    expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/999.*índice/i)]);
   });
 
   it("una spec implementada necesita un test por criterio", () => {
     armar("Implementada");
-    escribir("tests/algo.test.ts", 'it("[001-CA-1] hace algo", () => {});\n');
-    expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/001-algo.*CA-2/)]);
+    escribir("tests/algo.test.ts", 'it("[999-CA-1] hace algo", () => {});\n');
+    expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/999-algo.*CA-2/)]);
   });
 
   it("el test de un criterio de otra spec no cuenta", () => {
     armar("Implementada");
     escribir(
       "tests/algo.test.ts",
-      'it("[001-CA-1] a", () => {});\nit("[002-CA-2] b", () => {});\nit("[CA-2] c", () => {});\n',
+      'it("[999-CA-1] a", () => {});\nit("[998-CA-2] b", () => {});\nit("[CA-2] c", () => {});\n',
     );
-    expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/001-algo.*001-CA-2/)]);
+    expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/999-algo.*999-CA-2/)]);
   });
 
   it("una spec implementada no puede tener tareas sin marcar", () => {
     armar("Implementada", undefined, "- [x] **T1** — …\n- [ ] **T2** — …\n");
-    escribir("tests/algo.test.ts", 'it("[001-CA-1] a", () => {});\nit("[001-CA-2] b", () => {});\n');
-    expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/001-algo.*tarea/i)]);
+    escribir("tests/algo.test.ts", 'it("[999-CA-1] a", () => {});\nit("[999-CA-2] b", () => {});\n');
+    expect(verificarSpecs(raiz)).toEqual([expect.stringMatching(/999-algo.*tarea/i)]);
   });
 
   it("una spec implementada con todo cubierto pasa", () => {
     armar("Implementada");
-    escribir("tests/algo.test.ts", 'it("[001-CA-1] a", () => {});\nit("[001-CA-2] b", () => {});\n');
+    escribir("tests/algo.test.ts", 'it("[999-CA-1] a", () => {});\nit("[999-CA-2] b", () => {});\n');
     expect(verificarSpecs(raiz)).toEqual([]);
   });
 });
