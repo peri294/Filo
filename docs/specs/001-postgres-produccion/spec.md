@@ -1,6 +1,6 @@
 # 001 · PostgreSQL en producción y despliegue en Vercel
 
-- **Estado:** Aprobada <!-- Borrador | Aprobada | Implementada | Descartada -->
+- **Estado:** Implementada <!-- Borrador | Aprobada | Implementada | Descartada -->
 - **Fecha:** 2026-10-20
 - **Roles afectados:** Superadmin (y, de forma indirecta, todos: es la base de la plataforma publicada)
 

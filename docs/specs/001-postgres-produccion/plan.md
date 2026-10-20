@@ -40,7 +40,7 @@ con los controles de este repo.
 | Config | `prisma/entorno.ts` (nuevo) | Funciones puras: `urlDeMigraciones(env)` (CA-5) y `crearDemo(env)` (CA-4). |
 | Config | `prisma.config.ts` | `datasource.url = urlDeMigraciones(process.env)`. |
 | Seed | `prisma/seed.ts` | Adapter de Postgres; la barbería demo solo si `crearDemo(process.env)`. |
-| Build | `scripts/vercel-build.mjs` (nuevo) + `vercel.json` | En `VERCEL_ENV=production`: `prisma migrate deploy` y `prisma db seed`; siempre `next build`. `vercel.json` fija `buildCommand`, así no hay que configurarlo a mano en Vercel. |
+| Build | `scripts/vercel-build.mjs` (nuevo) + `vercel.json` | En `VERCEL_ENV=production`: `prisma migrate deploy` y `prisma db seed`; siempre `next build`. `vercel.json` fija `buildCommand: npm run vercel-build` (script de `package.json` que llama a `vercel-build.mjs`), así anda con o sin el comando configurado a mano en Vercel. |
 | Tests | `tests/test-db.ts` | `testDatabaseUrl(env)`: exige `TEST_DATABASE_URL` y que no sea `DATABASE_URL` ni `DATABASE_URL_UNPOOLED` (CA-3). |
 | Tests | `tests/global-setup.ts` | `DROP SCHEMA public CASCADE` + `CREATE SCHEMA` con `pg` y `prisma migrate deploy` (con las dos variables apuntando a la de tests). |
 | Tests | `tests/fixtures.ts` | `resetDb` con un solo `TRUNCATE … RESTART IDENTITY CASCADE` (una ida y vuelta en vez de 12). |
