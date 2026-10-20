@@ -6,7 +6,7 @@ Una carpeta por funcionalidad o cambio de comportamiento, numerada: `NNN-nombre-
 
 | Nº | Spec | Estado |
 | --- | --- | --- |
-| 001 | [PostgreSQL en producción y despliegue en Vercel](001-postgres-produccion/spec.md) | Aprobada |
+| 001 | [PostgreSQL en producción y despliegue en Vercel](001-postgres-produccion/spec.md) | Implementada |
 
 ## Próximas
 
