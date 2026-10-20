@@ -1,12 +1,22 @@
 import { execSync } from "node:child_process";
-import { rmSync } from "node:fs";
-import { TEST_DATABASE_URL, TEST_DB_FILE } from "./test-db";
+import { Client } from "pg";
 
-/** Crea prisma/test.db desde cero aplicando las migraciones. No toca prisma/dev.db. */
-export default function setup() {
-  for (const suffix of ["", "-journal", "-wal", "-shm"]) rmSync(`${TEST_DB_FILE}${suffix}`, { force: true });
+/**
+ * Deja la base de tests vacía y le aplica las migraciones. TEST_DATABASE_URL ya la validó vitest.config.mts
+ * (testDatabaseUrl): nunca es la de desarrollo ni la de producción.
+ */
+export default async function setup() {
+  const url = process.env.TEST_DATABASE_URL;
+  if (!url) throw new Error("Falta TEST_DATABASE_URL.");
+  const client = new Client({ connectionString: url });
+  await client.connect();
+  try {
+    await client.query('DROP SCHEMA IF EXISTS "public" CASCADE; CREATE SCHEMA "public";');
+  } finally {
+    await client.end();
+  }
   execSync("npx prisma migrate deploy", {
     stdio: "pipe",
-    env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
+    env: { ...process.env, DATABASE_URL: url, DATABASE_URL_UNPOOLED: url },
   });
 }
