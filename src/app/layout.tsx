@@ -4,7 +4,7 @@ import { BRAND_NAME } from "@/lib/brand";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const display = Oswald({ variable: "--font-display", subsets: ["latin"], weight: ["500", "600"] });
+const display = Oswald({ variable: "--font-display", subsets: ["latin"] });
 
 // Todas las páginas leen datos en vivo: no se prerenderizan.
 export const dynamic = "force-dynamic";
